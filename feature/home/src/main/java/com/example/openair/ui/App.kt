@@ -1496,13 +1496,20 @@ fun StationRow(
     station: Station,
     onPlay: () -> Unit,
     iconLoadDelayMs: Long = 0L,
-    onAddToPlaylist: () -> Unit
+    onAddToPlaylist: () -> Unit,
+    showPlaylistMenu: Boolean = false,
+    onReorder: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     var marqueeEnabled by remember { mutableStateOf(false) }
-    val countryText = station.country?.takeIf { it.isNotBlank() && it != "0" } ?: "Unknown country"
+    val stationUrl = (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
+    val isCustomStation = station.stationuuid.startsWith("custom_") ||
+        (station.stationuuid.isBlank() && stationUrl.isNotBlank())
+    val countryText = station.country?.takeIf { it.isNotBlank() && it != "0" }
+    val nonCustomCountryLine = countryText ?: "Unknown country"
     val tagsText = station.tags
         ?.split(',')
         ?.map { it.trim() }
@@ -1517,7 +1524,6 @@ fun StationRow(
         if (station.is_https == true) add("HTTPS")
     }
     val votesValue = station.votes ?: 0
-    val isCustomStation = station.stationuuid.startsWith("custom_")
     val votesLabel = when {
         isCustomStation -> "Custom"
         votesValue > 0 -> "$votesValue votes"
@@ -1574,24 +1580,34 @@ fun StationRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    val isCustomStation = station.stationuuid.startsWith("custom_")
                 }
-                Text(
-                    text = countryText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = statsOverflow,
-                    modifier = statsModifier
-                )
-                Text(
-                    text = tagsLine,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = statsOverflow,
-                    modifier = statsModifier
-                )
+                if (!isCustomStation) {
+                    Text(
+                        text = nonCustomCountryLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = statsOverflow,
+                        modifier = statsModifier
+                    )
+                    Text(
+                        text = tagsLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = statsOverflow,
+                        modifier = statsModifier
+                    )
+                } else if (!countryText.isNullOrBlank()) {
+                    Text(
+                        text = countryText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = statsOverflow,
+                        modifier = statsModifier
+                    )
+                }
                 Text(
                     text = techLine,
                     style = MaterialTheme.typography.bodySmall,
@@ -1602,17 +1618,72 @@ fun StationRow(
                 )
             }
             Spacer(modifier = Modifier.width(6.dp))
-            IconButton(onClick = {
-                haptics.soft()
-                onAddToPlaylist()
-            }) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (showPlaylistMenu) {
+                var menuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = {
+                        haptics.soft()
+                        menuExpanded = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Playlists") },
+                            onClick = {
+                                menuExpanded = false
+                                onAddToPlaylist()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Reorder") },
+                            onClick = {
+                                menuExpanded = false
+                                onReorder?.invoke()
+                            },
+                            enabled = onReorder != null
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Remove") },
+                            onClick = {
+                                menuExpanded = false
+                                onRemove?.invoke()
+                            },
+                            enabled = onRemove != null
+                        )
+                    }
+                }
+            } else {
+                IconButton(onClick = {
+                    haptics.soft()
+                    onAddToPlaylist()
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
+    }
+}
+
+private fun stationKey(station: Station): String {
+    val url = (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
+    return if (station.stationuuid.startsWith("custom_") && url.isNotBlank()) {
+        "custom:$url"
+    } else if (station.stationuuid.isBlank() && url.isNotBlank()) {
+        "custom:$url"
+    } else {
+        "uuid:${station.stationuuid}"
     }
 }
 
@@ -1936,16 +2007,13 @@ fun PlaylistStationsScreen(
         PlaylistRef.Custom -> store.custom
         is PlaylistRef.User -> store.playlistStations[ref.id].orEmpty()
     }
-    val sorted = when (ref) {
-        PlaylistRef.Recents, PlaylistRef.Custom -> baseStations
-        else -> baseStations.sortedWith(compareByDescending<Station> { it.votes ?: 0 })
-    }
-    val filtered by produceState(initialValue = sorted, sorted, query) {
+    val ordered = baseStations
+    val filtered by produceState(initialValue = ordered, ordered, query) {
         value = withContext(Dispatchers.Default) {
             if (query.isBlank()) {
-                sorted
+                ordered
             } else {
-                sorted.filter { station ->
+                ordered.filter { station ->
                     station.name.contains(query, ignoreCase = true)
                 }
             }
@@ -1953,6 +2021,19 @@ fun PlaylistStationsScreen(
     }
     var addDialogStation by remember { mutableStateOf<Station?>(null) }
     var showCustomDialog by remember { mutableStateOf(false) }
+    var reorderTarget by remember { mutableStateOf<Station?>(null) }
+    val reorderEnabled = query.isBlank()
+    val baseIndexByKey = remember(baseStations) {
+        baseStations.mapIndexed { index, station -> stationKey(station) to index }.toMap()
+    }
+    val moveStation: (Int, Int) -> Unit = { fromIndex, toIndex ->
+        when (ref) {
+            PlaylistRef.Favorites -> viewModel.moveStationInFavorites(fromIndex, toIndex)
+            PlaylistRef.Recents -> viewModel.moveStationInRecents(fromIndex, toIndex)
+            PlaylistRef.Custom -> viewModel.moveStationInCustom(fromIndex, toIndex)
+            is PlaylistRef.User -> viewModel.moveStationInPlaylist(ref.id, fromIndex, toIndex)
+        }
+    }
 
     val listState = rememberLazyListState()
     var reachedStart by remember(filtered) { mutableStateOf(false) }
@@ -2026,7 +2107,21 @@ fun PlaylistStationsScreen(
                         station = station,
                         onPlay = { playbackViewModel.playStation(station) },
                         iconLoadDelayMs = imageLoadDelayForIndex(index),
-                        onAddToPlaylist = { addDialogStation = station }
+                        onAddToPlaylist = { addDialogStation = station },
+                        showPlaylistMenu = true,
+                        onReorder = if (reorderEnabled) {
+                            { reorderTarget = station }
+                        } else {
+                            null
+                        },
+                        onRemove = {
+                            when (ref) {
+                                PlaylistRef.Favorites -> viewModel.toggleFavorite(station)
+                                PlaylistRef.Recents -> viewModel.removeFromRecents(station)
+                                PlaylistRef.Custom -> viewModel.removeCustomStation(station)
+                                is PlaylistRef.User -> viewModel.removeFromPlaylist(ref.id, station)
+                            }
+                        }
                     )
                 }
             }
@@ -2044,6 +2139,29 @@ fun PlaylistStationsScreen(
             },
             onTogglePlaylist = { playlistId ->
                 viewModel.toggleInPlaylist(playlistId, station)
+            }
+        )
+    }
+
+    val reorderIndex = reorderTarget?.let { baseIndexByKey[stationKey(it)] }
+    if (reorderTarget != null && reorderIndex != null) {
+        val station = reorderTarget!!
+        val canMoveUp = reorderIndex > 0
+        val canMoveDown = reorderIndex < baseStations.lastIndex
+        ReorderStationDialog(
+            name = station.name.ifBlank { "Station" },
+            canMoveUp = canMoveUp,
+            canMoveDown = canMoveDown,
+            onDismiss = { reorderTarget = null },
+            onMoveUp = {
+                if (canMoveUp) {
+                    moveStation(reorderIndex, reorderIndex - 1)
+                }
+            },
+            onMoveDown = {
+                if (canMoveDown) {
+                    moveStation(reorderIndex, reorderIndex + 1)
+                }
             }
         )
     }
@@ -2496,6 +2614,57 @@ private fun ReorderDialog(
         onDismissRequest = onDismiss,
         title = { Text("Reorder \"$name\"") },
         text = { Text("Move this playlist in the list.") },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = {
+                        haptics.soft()
+                        onMoveUp()
+                    },
+                    enabled = canMoveUp
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowUpward,
+                        contentDescription = "Move up"
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        haptics.soft()
+                        onMoveDown()
+                    },
+                    enabled = canMoveDown
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDownward,
+                        contentDescription = "Move down"
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                haptics.soft()
+                onDismiss()
+            }) { Text("Done") }
+        }
+    )
+}
+
+@Composable
+private fun ReorderStationDialog(
+    name: String,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onDismiss: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
+) {
+    val haptics = rememberHaptics()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reorder \"$name\"") },
+        text = { Text("Move this station in the playlist.") },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconButton(

@@ -84,6 +84,57 @@ class PlaylistRepository(private val context: Context) {
         }
     }
 
+    suspend fun removeCustomStation(station: Station) {
+        updateStore { store ->
+            val updated = removeStation(store.custom, station)
+            store.copy(custom = updated)
+        }
+    }
+
+    suspend fun removeFromRecents(station: Station) {
+        updateStore { store ->
+            val updated = removeStation(store.recents, station)
+            store.copy(recents = updated)
+        }
+    }
+
+    suspend fun removeFromPlaylist(playlistId: String, station: Station) {
+        updateStore { store ->
+            val current = store.playlistStations[playlistId].orEmpty()
+            val updated = removeStation(current, station)
+            store.withPlaylistStations(playlistId, updated)
+        }
+    }
+
+    suspend fun moveStationInFavorites(fromIndex: Int, toIndex: Int) {
+        updateStore { store ->
+            val updated = moveStation(store.favorites, fromIndex, toIndex)
+            store.copy(favorites = updated)
+        }
+    }
+
+    suspend fun moveStationInRecents(fromIndex: Int, toIndex: Int) {
+        updateStore { store ->
+            val updated = moveStation(store.recents, fromIndex, toIndex)
+            store.copy(recents = updated)
+        }
+    }
+
+    suspend fun moveStationInCustom(fromIndex: Int, toIndex: Int) {
+        updateStore { store ->
+            val updated = moveStation(store.custom, fromIndex, toIndex)
+            store.copy(custom = updated)
+        }
+    }
+
+    suspend fun moveStationInPlaylist(playlistId: String, fromIndex: Int, toIndex: Int) {
+        updateStore { store ->
+            val current = store.playlistStations[playlistId].orEmpty()
+            val updated = moveStation(current, fromIndex, toIndex)
+            store.withPlaylistStations(playlistId, updated)
+        }
+    }
+
     suspend fun createPlaylist(name: String): Playlist? {
         val trimmed = name.trim()
         if (trimmed.isBlank()) return null
@@ -142,9 +193,13 @@ class PlaylistRepository(private val context: Context) {
     }
 
     private suspend fun updateStore(transform: (PlaylistStore) -> PlaylistStore) {
-        val current = storeFlow.first()
-        val updated = transform(current)
-        writeStore(updated)
+        context.playlistDataStore.edit { prefs ->
+            val current = prefs[storeKey]?.let { payload ->
+                runCatching { json.decodeFromString(PlaylistStore.serializer(), payload) }.getOrNull()
+            } ?: PlaylistStore()
+            val updated = transform(current)
+            prefs[storeKey] = json.encodeToString(PlaylistStore.serializer(), updated)
+        }
     }
 
     private suspend fun writeStore(store: PlaylistStore) {
@@ -523,6 +578,21 @@ private fun stationKey(station: Station): String {
 
 private fun stationUrl(station: Station): String {
     return (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
+}
+
+private fun removeStation(stations: List<Station>, target: Station): List<Station> {
+    val targetKey = stationKey(target)
+    return stations.filterNot { stationKey(it) == targetKey }
+}
+
+private fun moveStation(stations: List<Station>, fromIndex: Int, toIndex: Int): List<Station> {
+    if (fromIndex !in stations.indices || toIndex !in stations.indices || fromIndex == toIndex) {
+        return stations
+    }
+    val mutable = stations.toMutableList()
+    val item = mutable.removeAt(fromIndex)
+    mutable.add(toIndex, item)
+    return mutable
 }
 
 private fun isCustomStation(station: Station): Boolean {

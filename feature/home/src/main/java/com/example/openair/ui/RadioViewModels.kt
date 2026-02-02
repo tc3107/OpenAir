@@ -672,6 +672,48 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
         }
     }
 
+    fun removeCustomStation(station: Station) {
+        viewModelScope.launch {
+            repository.removeCustomStation(station)
+        }
+    }
+
+    fun removeFromRecents(station: Station) {
+        viewModelScope.launch {
+            repository.removeFromRecents(station)
+        }
+    }
+
+    fun removeFromPlaylist(playlistId: String, station: Station) {
+        viewModelScope.launch {
+            repository.removeFromPlaylist(playlistId, station)
+        }
+    }
+
+    fun moveStationInFavorites(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            repository.moveStationInFavorites(fromIndex, toIndex)
+        }
+    }
+
+    fun moveStationInRecents(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            repository.moveStationInRecents(fromIndex, toIndex)
+        }
+    }
+
+    fun moveStationInCustom(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            repository.moveStationInCustom(fromIndex, toIndex)
+        }
+    }
+
+    fun moveStationInPlaylist(playlistId: String, fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            repository.moveStationInPlaylist(playlistId, fromIndex, toIndex)
+        }
+    }
+
     suspend fun exportPlaylists(): PlaylistExportResult {
         return repository.exportPlaylists()
     }

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [Unreleased]
+### Added
+- Playlist station overflow menu with Playlists/Reorder/Remove actions.
+- Playlist station reordering and removal support for favorites, recents, custom, and user playlists.
+
+### Changed
+- Playlist station lists now keep their stored order to reflect reordering.
+- Custom station rows hide empty country/tags by default.
+
+### Fixed
+- Adding multiple custom stations no longer overwrites earlier entries.
+
 ## [1.1.0] - 2026-02-02
 ### Added
 - Full database rebuild pipeline that downloads stations plus country/language/tag metadata, with progress and summary.
