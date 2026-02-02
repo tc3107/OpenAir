@@ -19,7 +19,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import android.os.Build
 import android.util.Log
+import android.content.pm.PackageManager
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
@@ -37,7 +39,7 @@ class RadioRepository(context: Context) {
         .writeTimeout(10, TimeUnit.SECONDS)
         .build()
 
-    private val userAgent = "MyRadioApp/0.1 (Android; contact: email)"
+    private val userAgent = buildUserAgent(context)
 
     private val discovery = ServerDiscovery(client, json, userAgent)
     private val mirrors = MirrorManager(discovery)
@@ -250,6 +252,21 @@ class RadioRepository(context: Context) {
 }
 
 private const val LOG_TAG = "OpenAirRadio"
+
+private fun buildUserAgent(context: Context): String {
+    val version = runCatching {
+        val pm = context.packageManager
+        val pkg = context.packageName
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(pkg, 0)
+        }
+        info.versionName
+    }.getOrNull()?.takeIf { it.isNotBlank() } ?: "0.0.0"
+    return "OpenAir/v$version (Android; https://github.com/tc3107/OpenAir)"
+}
 
 @Serializable
 data class SearchFilters(
