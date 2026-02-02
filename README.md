@@ -17,7 +17,6 @@ No accounts, no ads, no telemetry, local playlists only.
 - Search radio stations by name, country, language, and genre
 - Save stations to your personal library
 - Wide common codec support
-- Add custom stream URLs
 - Sort stations by distance to you
 
 ## Station data

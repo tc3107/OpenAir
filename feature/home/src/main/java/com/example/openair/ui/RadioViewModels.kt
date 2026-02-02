@@ -666,17 +666,6 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
         }
     }
 
-    fun addCustomStation(station: Station) {
-        viewModelScope.launch {
-            repository.addCustomStation(station)
-        }
-    }
-
-    fun removeCustomStation(station: Station) {
-        viewModelScope.launch {
-            repository.removeCustomStation(station)
-        }
-    }
 
     fun removeFromRecents(station: Station) {
         viewModelScope.launch {
@@ -702,11 +691,6 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
         }
     }
 
-    fun moveStationInCustom(fromIndex: Int, toIndex: Int) {
-        viewModelScope.launch {
-            repository.moveStationInCustom(fromIndex, toIndex)
-        }
-    }
 
     fun moveStationInPlaylist(playlistId: String, fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {

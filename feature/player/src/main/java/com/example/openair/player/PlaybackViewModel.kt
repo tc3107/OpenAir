@@ -80,11 +80,7 @@ class PlaybackViewModel(
             playlistRepository.addToRecents(station)
             _state.update { it.copy(status = "Resolving stream...", currentStation = station) }
             triedUrls.clear()
-            candidateUrls = if (station.stationuuid.startsWith("custom_")) {
-                listOfNotNull(station.url_resolved, station.url_https, station.url)
-            } else {
-                repository.resolvePlaybackUrls(station.stationuuid)
-            }
+            candidateUrls = repository.resolvePlaybackUrls(station.stationuuid)
             candidateIndex = 0
             if (candidateUrls.isEmpty()) {
                 _state.update { it.copy(status = "No playable URL") }

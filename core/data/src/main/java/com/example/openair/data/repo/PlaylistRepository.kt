@@ -31,12 +31,13 @@ class PlaylistRepository(private val context: Context) {
 
     val storeFlow: Flow<PlaylistStore> = context.playlistDataStore.data.map { prefs ->
         val payload = prefs[storeKey]
-        if (payload.isNullOrBlank()) {
+        val decoded = if (payload.isNullOrBlank()) {
             PlaylistStore()
         } else {
             runCatching { json.decodeFromString(PlaylistStore.serializer(), payload) }
                 .getOrElse { PlaylistStore() }
         }
+        stripCustomStations(decoded)
     }
 
     suspend fun toggleFavorite(station: Station) {
@@ -72,25 +73,6 @@ class PlaylistRepository(private val context: Context) {
         }
     }
 
-    suspend fun addCustomStation(station: Station) {
-        updateStore { store ->
-            val url = station.url_resolved ?: station.url_https ?: station.url ?: ""
-            if (station.name.isBlank() || url.isBlank()) return@updateStore store
-            val updated = listOf(station) + store.custom.filterNot { existing ->
-                val existingUrl = existing.url_resolved ?: existing.url_https ?: existing.url ?: ""
-                existingUrl == url
-            }
-            store.copy(custom = updated)
-        }
-    }
-
-    suspend fun removeCustomStation(station: Station) {
-        updateStore { store ->
-            val updated = removeStation(store.custom, station)
-            store.copy(custom = updated)
-        }
-    }
-
     suspend fun removeFromRecents(station: Station) {
         updateStore { store ->
             val updated = removeStation(store.recents, station)
@@ -117,13 +99,6 @@ class PlaylistRepository(private val context: Context) {
         updateStore { store ->
             val updated = moveStation(store.recents, fromIndex, toIndex)
             store.copy(recents = updated)
-        }
-    }
-
-    suspend fun moveStationInCustom(fromIndex: Int, toIndex: Int) {
-        updateStore { store ->
-            val updated = moveStation(store.custom, fromIndex, toIndex)
-            store.copy(custom = updated)
         }
     }
 
@@ -197,7 +172,7 @@ class PlaylistRepository(private val context: Context) {
             val current = prefs[storeKey]?.let { payload ->
                 runCatching { json.decodeFromString(PlaylistStore.serializer(), payload) }.getOrNull()
             } ?: PlaylistStore()
-            val updated = transform(current)
+            val updated = stripCustomStations(transform(current))
             prefs[storeKey] = json.encodeToString(PlaylistStore.serializer(), updated)
         }
     }
@@ -275,7 +250,7 @@ class PlaylistRepository(private val context: Context) {
         val updated = when (mode) {
             PlaylistImportMode.Replace -> incoming
             PlaylistImportMode.Merge -> mergeStores(storeFlow.first(), incoming)
-        }.withEnsuredCustomStations()
+        }
 
         writeStore(updated)
         return PlaylistImportResult(
@@ -345,8 +320,7 @@ data class PlaylistExportSummary(
     val playlistCount: Int,
     val playlistStationCount: Int,
     val favoritesCount: Int,
-    val recentsCount: Int,
-    val customCount: Int
+    val recentsCount: Int
 ) {
     companion object {
         fun fromStore(store: PlaylistStore): PlaylistExportSummary {
@@ -354,8 +328,7 @@ data class PlaylistExportSummary(
                 playlistCount = store.playlists.size,
                 playlistStationCount = store.playlistStations.values.sumOf { it.size },
                 favoritesCount = store.favorites.size,
-                recentsCount = store.recents.size,
-                customCount = store.custom.size
+                recentsCount = store.recents.size
             )
         }
     }
@@ -375,16 +348,14 @@ data class PlaylistExportPayload(
     val playlists: List<Playlist> = emptyList(),
     val playlistStations: Map<String, List<Station>> = emptyMap(),
     val favorites: List<Station> = emptyList(),
-    val recents: List<Station> = emptyList(),
-    val custom: List<Station> = emptyList()
+    val recents: List<Station> = emptyList()
 ) {
     fun toStore(): PlaylistStore {
         return PlaylistStore(
             playlists = playlists,
             playlistStations = playlistStations,
             favorites = favorites,
-            recents = recents,
-            custom = custom
+            recents = recents
         )
     }
 
@@ -399,8 +370,7 @@ data class PlaylistExportPayload(
                 playlists = store.playlists,
                 playlistStations = store.playlistStations,
                 favorites = store.favorites,
-                recents = store.recents,
-                custom = store.custom
+                recents = store.recents
             )
         }
     }
@@ -416,20 +386,8 @@ private fun PlaylistStore.normalizedForImport(): PlaylistStore {
     return copy(
         favorites = dedupeStations(favorites),
         recents = dedupeStations(recents).take(PLAYLIST_MAX_RECENTS),
-        custom = dedupeStations(custom, filterInvalidCustom = true),
         playlistStations = cleanedStations
     )
-}
-
-private fun PlaylistStore.withEnsuredCustomStations(): PlaylistStore {
-    val customStations = buildList {
-        addAll(custom)
-        favorites.filterTo(this, ::isCustomStation)
-        recents.filterTo(this, ::isCustomStation)
-        playlistStations.values.flatten().filterTo(this, ::isCustomStation)
-    }
-    val mergedCustom = dedupeStations(customStations, filterInvalidCustom = true)
-    return copy(custom = mergedCustom)
 }
 
 private fun mergeStores(current: PlaylistStore, incoming: PlaylistStore): PlaylistStore {
@@ -461,14 +419,11 @@ private fun mergeStores(current: PlaylistStore, incoming: PlaylistStore): Playli
 
     val mergedFavorites = mergeStations(current.favorites, incoming.favorites)
     val mergedRecents = mergeStations(current.recents, incoming.recents).take(PLAYLIST_MAX_RECENTS)
-    val mergedCustom = mergeStations(current.custom, incoming.custom, filterInvalidCustom = true)
-
     return PlaylistStore(
         playlists = mergedPlaylists,
         playlistStations = mergedStations,
         favorites = mergedFavorites,
-        recents = mergedRecents,
-        custom = mergedCustom
+        recents = mergedRecents
     )
 }
 
@@ -476,7 +431,6 @@ private fun validateExportPayload(payload: PlaylistExportPayload): String? {
     if (payload.playlists.isEmpty() &&
         payload.favorites.isEmpty() &&
         payload.recents.isEmpty() &&
-        payload.custom.isEmpty() &&
         payload.playlistStations.isEmpty()
     ) {
         return "no playlists or stations found"
@@ -507,11 +461,7 @@ private fun validateExportPayload(payload: PlaylistExportPayload): String? {
     fun validateStations(stations: List<Station>, label: String): String? {
         stations.forEach { station ->
             val url = stationUrl(station)
-            val isCustom = isCustomStation(station)
-            if (isCustom && url.isBlank()) {
-                return "$label contains a custom station with no URL"
-            }
-            if (!isCustom && station.stationuuid.isBlank() && url.isBlank()) {
+            if (station.stationuuid.isBlank() && url.isBlank()) {
                 return "$label contains a station missing id and url"
             }
         }
@@ -520,7 +470,6 @@ private fun validateExportPayload(payload: PlaylistExportPayload): String? {
 
     validateStations(payload.favorites, "Favorites")?.let { return it }
     validateStations(payload.recents, "Recents")?.let { return it }
-    validateStations(payload.custom, "Custom")?.let { return it }
     payload.playlistStations.forEach { (playlistId, stations) ->
         validateStations(stations, "Playlist $playlistId")?.let { return it }
     }
@@ -528,15 +477,9 @@ private fun validateExportPayload(payload: PlaylistExportPayload): String? {
     return null
 }
 
-private fun dedupeStations(
-    stations: List<Station>,
-    filterInvalidCustom: Boolean = false
-): List<Station> {
+private fun dedupeStations(stations: List<Station>): List<Station> {
     val result = LinkedHashMap<String, Station>()
     stations.forEach { station ->
-        if (filterInvalidCustom && isCustomStation(station) && stationUrl(station).isBlank()) {
-            return@forEach
-        }
         val key = stationKey(station)
         if (!result.containsKey(key)) {
             result[key] = station
@@ -547,16 +490,13 @@ private fun dedupeStations(
 
 private fun mergeStations(
     existing: List<Station>,
-    incoming: List<Station>,
-    filterInvalidCustom: Boolean = false
+    incoming: List<Station>
 ): List<Station> {
     val result = LinkedHashMap<String, Station>()
     existing.forEach { station ->
-        if (filterInvalidCustom && isCustomStation(station) && stationUrl(station).isBlank()) return@forEach
         result[stationKey(station)] = station
     }
     incoming.forEach { station ->
-        if (filterInvalidCustom && isCustomStation(station) && stationUrl(station).isBlank()) return@forEach
         val key = stationKey(station)
         if (!result.containsKey(key)) {
             result[key] = station
@@ -566,18 +506,34 @@ private fun mergeStations(
 }
 
 private fun stationKey(station: Station): String {
-    val url = stationUrl(station)
-    return if (station.stationuuid.startsWith("custom_") && url.isNotBlank()) {
-        "custom:$url"
-    } else if (station.stationuuid.isBlank() && url.isNotBlank()) {
-        "custom:$url"
-    } else {
+    return if (station.stationuuid.isNotBlank()) {
         "uuid:${station.stationuuid}"
+    } else {
+        val url = stationUrl(station)
+        if (url.isNotBlank()) "url:$url" else "uuid:"
     }
 }
 
 private fun stationUrl(station: Station): String {
     return (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
+}
+
+private fun stripCustomStations(store: PlaylistStore): PlaylistStore {
+    val filteredFavorites = store.favorites.filterNot(::isCustomLike)
+    val filteredRecents = store.recents.filterNot(::isCustomLike)
+    val filteredPlaylists = store.playlistStations
+        .mapValues { (_, stations) -> stations.filterNot(::isCustomLike) }
+        .filterValues { it.isNotEmpty() }
+    return store.copy(
+        favorites = filteredFavorites,
+        recents = filteredRecents,
+        playlistStations = filteredPlaylists
+    )
+}
+
+private fun isCustomLike(station: Station): Boolean {
+    val url = stationUrl(station)
+    return station.stationuuid.startsWith("custom_") || (station.stationuuid.isBlank() && url.isNotBlank())
 }
 
 private fun removeStation(stations: List<Station>, target: Station): List<Station> {
@@ -595,10 +551,6 @@ private fun moveStation(stations: List<Station>, fromIndex: Int, toIndex: Int): 
     return mutable
 }
 
-private fun isCustomStation(station: Station): Boolean {
-    val url = stationUrl(station)
-    return station.stationuuid.startsWith("custom_") || (station.stationuuid.isBlank() && url.isNotBlank())
-}
 
 private fun sha256(value: String): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())

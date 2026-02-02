@@ -8,9 +8,8 @@ fun normalizePlaylistName(name: String): String = name.trim().lowercase(Locale.R
 object SystemPlaylistNames {
     const val FAVORITES = "Favorites"
     const val RECENTS = "Recents"
-    const val CUSTOM = "Custom"
 
-    val all: Set<String> = setOf(FAVORITES, RECENTS, CUSTOM)
+    val all: Set<String> = setOf(FAVORITES, RECENTS)
     val normalized: Set<String> = all.map(::normalizePlaylistName).toSet()
 }
 
@@ -27,6 +26,5 @@ data class PlaylistStore(
     val playlists: List<Playlist> = emptyList(),
     val playlistStations: Map<String, List<Station>> = emptyMap(),
     val favorites: List<Station> = emptyList(),
-    val recents: List<Station> = emptyList(),
-    val custom: List<Station> = emptyList()
+    val recents: List<Station> = emptyList()
 )

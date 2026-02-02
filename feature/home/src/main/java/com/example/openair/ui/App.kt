@@ -142,7 +142,6 @@ import androidx.core.content.ContextCompat
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.compose.AsyncImagePainter
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import coil.request.ImageRequest
 import coil.imageLoader
 import kotlinx.coroutines.delay
@@ -170,7 +169,6 @@ import com.example.openair.data.repo.RadioRepository
 import com.example.openair.data.repo.ScreenType
 import com.example.openair.data.repo.SearchFilters
 import com.example.openair.player.PlaybackViewModel
-import java.util.UUID
 
 sealed class Screen {
     data object Browse : Screen()
@@ -184,7 +182,6 @@ sealed class Screen {
 sealed class PlaylistRef(val label: String) {
     data object Favorites : PlaylistRef(SystemPlaylistNames.FAVORITES)
     data object Recents : PlaylistRef(SystemPlaylistNames.RECENTS)
-    data object Custom : PlaylistRef(SystemPlaylistNames.CUSTOM)
     data class User(val id: String, val name: String) : PlaylistRef(name)
 }
 
@@ -1505,11 +1502,8 @@ fun StationRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     var marqueeEnabled by remember { mutableStateOf(false) }
-    val stationUrl = (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
-    val isCustomStation = station.stationuuid.startsWith("custom_") ||
-        (station.stationuuid.isBlank() && stationUrl.isNotBlank())
     val countryText = station.country?.takeIf { it.isNotBlank() && it != "0" }
-    val nonCustomCountryLine = countryText ?: "Unknown country"
+    val countryLine = countryText ?: "Unknown country"
     val tagsText = station.tags
         ?.split(',')
         ?.map { it.trim() }
@@ -1524,11 +1518,7 @@ fun StationRow(
         if (station.is_https == true) add("HTTPS")
     }
     val votesValue = station.votes ?: 0
-    val votesLabel = when {
-        isCustomStation -> "Custom"
-        votesValue > 0 -> "$votesValue votes"
-        else -> null
-    }
+    val votesLabel = if (votesValue > 0) "$votesValue votes" else null
     val detailParts = techParts.toMutableList().apply {
         if (votesLabel != null) add(votesLabel)
     }
@@ -1581,33 +1571,22 @@ fun StationRow(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                if (!isCustomStation) {
-                    Text(
-                        text = nonCustomCountryLine,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = statsOverflow,
-                        modifier = statsModifier
-                    )
-                    Text(
-                        text = tagsLine,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = statsOverflow,
-                        modifier = statsModifier
-                    )
-                } else if (!countryText.isNullOrBlank()) {
-                    Text(
-                        text = countryText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = statsOverflow,
-                        modifier = statsModifier
-                    )
-                }
+                Text(
+                    text = countryLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = statsOverflow,
+                    modifier = statsModifier
+                )
+                Text(
+                    text = tagsLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = statsOverflow,
+                    modifier = statsModifier
+                )
                 Text(
                     text = techLine,
                     style = MaterialTheme.typography.bodySmall,
@@ -1642,22 +1621,22 @@ fun StationRow(
                                 onAddToPlaylist()
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text("Reorder") },
-                            onClick = {
-                                menuExpanded = false
-                                onReorder?.invoke()
-                            },
-                            enabled = onReorder != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Remove") },
-                            onClick = {
-                                menuExpanded = false
-                                onRemove?.invoke()
-                            },
-                            enabled = onRemove != null
-                        )
+                    DropdownMenuItem(
+                        text = { Text("Reorder") },
+                        onClick = {
+                            menuExpanded = false
+                            onReorder?.invoke()
+                        },
+                        enabled = onReorder != null
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Remove") },
+                        onClick = {
+                            menuExpanded = false
+                            onRemove?.invoke()
+                        },
+                        enabled = onRemove != null
+                    )
                     }
                 }
             } else {
@@ -1678,12 +1657,12 @@ fun StationRow(
 
 private fun stationKey(station: Station): String {
     val url = (station.url_resolved ?: station.url_https ?: station.url ?: "").trim()
-    return if (station.stationuuid.startsWith("custom_") && url.isNotBlank()) {
-        "custom:$url"
-    } else if (station.stationuuid.isBlank() && url.isNotBlank()) {
-        "custom:$url"
-    } else {
+    return if (station.stationuuid.isNotBlank()) {
         "uuid:${station.stationuuid}"
+    } else if (url.isNotBlank()) {
+        "url:$url"
+    } else {
+        "uuid:"
     }
 }
 
@@ -1706,7 +1685,6 @@ private fun Screen.toNavigationState(): NavigationState {
             val (type, id, name) = when (ref) {
                 PlaylistRef.Favorites -> Triple(PlaylistRefType.Favorites, null, ref.label)
                 PlaylistRef.Recents -> Triple(PlaylistRefType.Recents, null, ref.label)
-                PlaylistRef.Custom -> Triple(PlaylistRefType.Custom, null, ref.label)
                 is PlaylistRef.User -> Triple(PlaylistRefType.User, ref.id, ref.name)
             }
             NavigationState(
@@ -1740,8 +1718,6 @@ private fun NavigationState.toScreen(store: PlaylistStore): Screen {
                     Screen.PlaylistStations(SystemPlaylistNames.FAVORITES, PlaylistRef.Favorites)
                 PlaylistRefType.Recents ->
                     Screen.PlaylistStations(SystemPlaylistNames.RECENTS, PlaylistRef.Recents)
-                PlaylistRefType.Custom ->
-                    Screen.PlaylistStations(SystemPlaylistNames.CUSTOM, PlaylistRef.Custom)
                 PlaylistRefType.User -> {
                     val playlist = playlistId?.let { id ->
                         store.playlists.firstOrNull { it.id == id }
@@ -1790,8 +1766,7 @@ fun PlaylistsScreen(
 
     val systemPlaylists = listOf(
         SystemPlaylistItem(PlaylistRef.Favorites, store.favorites, Icons.Filled.Favorite),
-        SystemPlaylistItem(PlaylistRef.Recents, store.recents, Icons.Outlined.History),
-        SystemPlaylistItem(PlaylistRef.Custom, store.custom, Icons.AutoMirrored.Outlined.QueueMusic)
+        SystemPlaylistItem(PlaylistRef.Recents, store.recents, Icons.Outlined.History)
     )
 
     val userPlaylists = store.playlists.map { playlist ->
@@ -2004,7 +1979,6 @@ fun PlaylistStationsScreen(
     val baseStations = when (ref) {
         PlaylistRef.Favorites -> store.favorites
         PlaylistRef.Recents -> store.recents
-        PlaylistRef.Custom -> store.custom
         is PlaylistRef.User -> store.playlistStations[ref.id].orEmpty()
     }
     val ordered = baseStations
@@ -2020,7 +1994,6 @@ fun PlaylistStationsScreen(
         }
     }
     var addDialogStation by remember { mutableStateOf<Station?>(null) }
-    var showCustomDialog by remember { mutableStateOf(false) }
     var reorderTarget by remember { mutableStateOf<Station?>(null) }
     val reorderEnabled = query.isBlank()
     val baseIndexByKey = remember(baseStations) {
@@ -2030,7 +2003,6 @@ fun PlaylistStationsScreen(
         when (ref) {
             PlaylistRef.Favorites -> viewModel.moveStationInFavorites(fromIndex, toIndex)
             PlaylistRef.Recents -> viewModel.moveStationInRecents(fromIndex, toIndex)
-            PlaylistRef.Custom -> viewModel.moveStationInCustom(fromIndex, toIndex)
             is PlaylistRef.User -> viewModel.moveStationInPlaylist(ref.id, fromIndex, toIndex)
         }
     }
@@ -2077,20 +2049,6 @@ fun PlaylistStationsScreen(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
-        if (ref == PlaylistRef.Custom) {
-            Button(
-                onClick = {
-                    haptics.soft()
-                    showCustomDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                Text("Add custom station")
-            }
-        }
-
         if (filtered.isEmpty()) {
             Column(
                 modifier = Modifier
@@ -2118,7 +2076,6 @@ fun PlaylistStationsScreen(
                             when (ref) {
                                 PlaylistRef.Favorites -> viewModel.toggleFavorite(station)
                                 PlaylistRef.Recents -> viewModel.removeFromRecents(station)
-                                PlaylistRef.Custom -> viewModel.removeCustomStation(station)
                                 is PlaylistRef.User -> viewModel.removeFromPlaylist(ref.id, station)
                             }
                         }
@@ -2166,26 +2123,6 @@ fun PlaylistStationsScreen(
         )
     }
 
-    if (showCustomDialog) {
-        CustomStationDialog(
-            onDismiss = { showCustomDialog = false },
-            onConfirm = { name, url, location ->
-                val trimmedName = name.trim()
-                val trimmedUrl = url.trim()
-                val trimmedLocation = location.trim()
-                val station = Station(
-                    stationuuid = "custom_${UUID.randomUUID()}",
-                    name = trimmedName,
-                    country = trimmedLocation.ifBlank { null },
-                    url = trimmedUrl,
-                    url_resolved = trimmedUrl,
-                    url_https = if (trimmedUrl.startsWith("https://")) trimmedUrl else null
-                )
-                viewModel.addCustomStation(station)
-                showCustomDialog = false
-            }
-        )
-    }
 }
 
 private data class SystemPlaylistItem(
@@ -2465,100 +2402,6 @@ private fun PlaylistNameDialog(
                 enabled = canConfirm
             ) {
                 Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                haptics.soft()
-                onDismiss()
-            }) { Text("Cancel") }
-        }
-    )
-}
-
-@Composable
-private fun CustomStationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    val haptics = rememberHaptics()
-    val trimmedName = name.trim()
-    val trimmedUrl = url.trim()
-    val urlValid = trimmedUrl.toHttpUrlOrNull() != null
-    val canConfirm = trimmedName.isNotBlank() && urlValid
-    val error = when {
-        trimmedName.isBlank() -> "Name is required."
-        trimmedUrl.isBlank() -> "URL is required."
-        !urlValid -> "Enter a valid http(s) URL."
-        else -> null
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add custom station") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = { Text("Station name") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
-                )
-                TextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    placeholder = { Text("Stream URL") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    isError = error != null && !urlValid,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
-                )
-                TextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    placeholder = { Text("Location (optional)") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
-                )
-                if (error != null) {
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    haptics.soft()
-                    onConfirm(trimmedName, trimmedUrl, location)
-                },
-                enabled = canConfirm
-            ) {
-                Text("Add")
             }
         },
         dismissButton = {
@@ -3190,7 +3033,7 @@ fun ConfigScreen(
             )
             HelpRow(
                 title = "Playlists backup",
-                body = "Export keeps playlists, favorites, recents, and custom URL stations. Import can merge or replace."
+                body = "Export keeps playlists, favorites, and recents. Import can merge or replace."
             )
         }
 
@@ -3301,7 +3144,7 @@ fun ConfigScreen(
                 }
             }
             Text(
-                text = "Exports include playlist order, favorites, recents, and custom URL stations.",
+                text = "Exports include playlist order, favorites, and recents.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

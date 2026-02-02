@@ -16,7 +16,6 @@ enum class ScreenType {
 enum class PlaylistRefType {
     Favorites,
     Recents,
-    Custom,
     User
 }
 
