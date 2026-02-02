@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/OpenAir Logo.svg" width="240" alt="OpenAir logo" />
+  <img src="assets/OpenAir Logo Light.svg" width="240" alt="OpenAir logo" />
 </p>
 
 <h1 align="center">OpenAir</h1>
