@@ -7,6 +7,7 @@ enum class ScreenType {
     Browse,
     Playlists,
     NearMe,
+    Config,
     StationList,
     PlaylistStations
 }

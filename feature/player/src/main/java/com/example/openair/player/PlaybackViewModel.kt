@@ -3,6 +3,7 @@ package com.example.openair.player
 import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -33,6 +34,7 @@ class PlaybackViewModel(
     private val triedUrls = mutableSetOf<String>()
     private var candidateUrls: List<String> = emptyList()
     private var candidateIndex = 0
+    private var pendingPlayStation: Station? = null
 
     private val executor = Executor { command -> command.run() }
 
@@ -42,6 +44,10 @@ class PlaybackViewModel(
         future.addListener({
             controller = future.get()
             controller?.addListener(playerListener)
+            pendingPlayStation?.let { station ->
+                pendingPlayStation = null
+                playStation(station)
+            }
         }, executor)
         restoreLastStation()
     }
@@ -108,12 +114,25 @@ class PlaybackViewModel(
     }
 
     fun togglePlayback() {
-        val player = controller ?: return
+        val player = controller
+        val station = _state.value.currentStation
+        if (player == null) {
+            if (station != null) {
+                pendingPlayStation = station
+            }
+            return
+        }
         if (player.isPlaying) {
             player.pause()
-        } else {
-            player.play()
+            return
         }
+        if (player.playbackState == Player.STATE_IDLE || player.currentMediaItem == null) {
+            if (station != null) {
+                playStation(station)
+            }
+            return
+        }
+        player.play()
     }
 
     fun stop() {
@@ -123,13 +142,17 @@ class PlaybackViewModel(
     private fun startPlayback(url: String, station: Station) {
         triedUrls.add(url)
         ensureServiceStarted()
+        val artworkUri = station.favicon?.trim()?.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
         val item = MediaItem.Builder()
             .setMediaId(station.stationuuid)
             .setUri(url)
             .setMediaMetadata(
                 androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(station.name)
-                    .setArtist(station.country ?: "")
+                    .setTitle("OpenAir Live")
+                    .setArtist(station.name.ifBlank { "Unknown station" })
+                    .setSubtitle(station.name.ifBlank { "Unknown station" })
+                    .setDescription(station.country ?: "")
+                    .setArtworkUri(artworkUri)
                     .build()
             )
             .build()

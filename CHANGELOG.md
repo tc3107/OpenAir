@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.1.0] - 2026-02-02
+### Added
+- Full database rebuild pipeline that downloads stations plus country/language/tag metadata, with progress and summary.
+- Config screen with “Rebuild database from web” action and status/disclaimer messaging.
+- Config help section, GitHub link, and refreshed layout cards for clarity.
+- In-memory station filtering with a determinate progress indicator for Browse searches.
+- Sort-by options for votes, clicks, and distance (with location prompt).
+- Playlist search now includes user playlists and stations inside them.
+- Playlist export/import with merge/replace modes, checksum validation, and custom URL station support.
+
+### Changed
+- Browse redesign into a single search/filter screen (country, language, tag, min votes) with live updates.
+- Search bar filters station names only.
+- “Near Me” is now handled via the distance sort in Browse.
+- App restores the last used screen except Config (defaults to Browse); re-tapping tabs/back returns to main list or filter view.
+- User-Agent string now includes app version and GitHub URL.
+- Playlist search order now shows playlists before stations with a divider.
+- Filter dropdowns include option dividers, clear invalid entries on blur, and min-votes accepts digits only.
+- Config import/export shows errors via toast notifications only (no success messaging).
+- Media notification metadata now uses “OpenAir Live” with station name subtitle and artwork when available.
+
+### Fixed
+- Play now works after app restart when a station is already in Now Playing.
+- Config screen no longer flashes on startup before database status loads.
+- Search back behavior now closes the keyboard before navigating back.
+- Saveable state crash when leaving browse filters.
+
 ## [1.0.0] - 2026-02-02
 ### Added
 - Browse stations by country, tag, and language with search filters.
