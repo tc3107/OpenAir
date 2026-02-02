@@ -1,0 +1,33 @@
+package com.example.openair.ui
+
+import android.app.Application
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.openair.data.repo.AppStateRepository
+import com.example.openair.data.repo.PlaylistRepository
+import com.example.openair.data.repo.RadioRepository
+import com.example.openair.player.PlaybackViewModel
+
+class AppViewModelFactory(
+    private val app: Application,
+    private val repository: RadioRepository,
+    private val playlistRepository: PlaylistRepository,
+    private val appStateRepository: AppStateRepository
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(BrowseViewModel::class.java) ->
+                BrowseViewModel(repository) as T
+            modelClass.isAssignableFrom(StationListViewModel::class.java) ->
+                StationListViewModel(repository) as T
+            modelClass.isAssignableFrom(NearMeViewModel::class.java) ->
+                NearMeViewModel(repository) as T
+            modelClass.isAssignableFrom(PlaybackViewModel::class.java) ->
+                PlaybackViewModel(app, repository, playlistRepository, appStateRepository) as T
+            modelClass.isAssignableFrom(PlaylistsViewModel::class.java) ->
+                PlaylistsViewModel(playlistRepository) as T
+            else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
+        }
+    }
+}
