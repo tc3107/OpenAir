@@ -93,7 +93,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -441,7 +441,7 @@ fun OpenAirApp() {
                         label = { Text("Config") },
                         icon = {
                             Icon(
-                                imageVector = Icons.Outlined.Settings,
+                                imageVector = Icons.Outlined.HelpOutline,
                                 contentDescription = null
                             )
                         }
@@ -3000,6 +3000,7 @@ fun ConfigScreen(
         DatabaseStatus.Empty -> MaterialTheme.colorScheme.outline
         DatabaseStatus.Error -> MaterialTheme.colorScheme.error
     }
+    val showOnlyDatabase = uiState.status == DatabaseStatus.Empty || uiState.status == DatabaseStatus.Error
 
     Column(
         modifier = modifier
@@ -3013,33 +3014,6 @@ fun ConfigScreen(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold
         )
-
-        ConfigSectionCard {
-            Text(
-                text = "Help",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            HelpRow(
-                title = "OpenAir",
-                body = "A lightweight radio browser and player built around the Radio Browser catalog."
-            )
-            TextButton(onClick = { uriHandler.openUri("https://github.com/tc3107/OpenAir") }) {
-                Text("github.com/tc3107/OpenAir")
-            }
-            HelpRow(
-                title = "Database rebuild",
-                body = "If Browse shows only Config or search feels empty, rebuild the database from the web."
-            )
-            HelpRow(
-                title = "Local search",
-                body = "Search and filters run on the local database for speed. Use Rebuild to refresh."
-            )
-            HelpRow(
-                title = "Playlists backup",
-                body = "Export keeps playlists, favorites, and recents. Import can merge or replace."
-            )
-        }
 
         ConfigSectionCard {
             Row(
@@ -3125,69 +3099,18 @@ fun ConfigScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
 
-        ConfigSectionCard {
-            Text(
-                text = "Playlists",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Backup, move, or restore your playlists.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilledTonalButton(
-                    onClick = {
-                        haptics.soft()
-                        exportLauncher.launch("openair-playlists.json")
-                    },
-                    enabled = !isExporting && !isImporting,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(imageVector = Icons.Outlined.FileDownload, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isExporting) "Exporting..." else "Export")
+            uiState.summary?.let { summary ->
+                val updatedLabel = remember(summary.lastUpdated) {
+                    if (summary.lastUpdated > 0L) {
+                        java.text.DateFormat.getDateTimeInstance().format(java.util.Date(summary.lastUpdated))
+                    } else {
+                        "Unknown"
+                    }
                 }
-                OutlinedButton(
-                    onClick = {
-                        haptics.soft()
-                        importLauncher.launch(arrayOf("application/json", "text/*"))
-                    },
-                    enabled = !isExporting && !isImporting,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(imageVector = Icons.Outlined.FileUpload, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isImporting) "Importing..." else "Import")
-                }
-            }
-            Text(
-                text = "Exports include playlist order, favorites, and recents.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "Import can merge into existing playlists or replace everything.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        uiState.summary?.let { summary ->
-            val updatedLabel = remember(summary.lastUpdated) {
-                if (summary.lastUpdated > 0L) {
-                    java.text.DateFormat.getDateTimeInstance().format(java.util.Date(summary.lastUpdated))
-                } else {
-                    "Unknown"
-                }
-            }
-            ConfigSectionCard {
                 Text(
-                    text = "Database summary",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Database stats",
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
                 SummaryRow(label = "Stations", value = summary.stationCount.toString())
@@ -3195,6 +3118,92 @@ fun ConfigScreen(
                 SummaryRow(label = "Tags", value = summary.tagCount.toString())
                 SummaryRow(label = "Languages", value = summary.languageCount.toString())
                 SummaryRow(label = "Last updated", value = updatedLabel)
+            }
+        }
+
+        if (!showOnlyDatabase) {
+            ConfigSectionCard {
+                Text(
+                    text = "Playlists",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Backup, move, or restore your playlists.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FilledTonalButton(
+                        onClick = {
+                            haptics.soft()
+                            exportLauncher.launch("openair-playlists.json")
+                        },
+                        enabled = !isExporting && !isImporting,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Outlined.FileDownload, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isExporting) "Exporting..." else "Export")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            haptics.soft()
+                            importLauncher.launch(arrayOf("application/json", "text/*"))
+                        },
+                        enabled = !isExporting && !isImporting,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Outlined.FileUpload, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isImporting) "Importing..." else "Import")
+                    }
+                }
+                Text(
+                    text = "Exports include playlist order, favorites, and recents.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Import can merge into existing playlists or replace everything.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            ConfigSectionCard {
+                Text(
+                    text = "Help",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                HelpRow(
+                    title = "OpenAir",
+                    body = "A lightweight radio browser and player built around the Radio Browser catalog."
+                )
+                TextButton(onClick = { uriHandler.openUri("https://github.com/tc3107/OpenAir") }) {
+                    Text("github.com/tc3107/OpenAir")
+                }
+                HelpRow(
+                    title = "Database rebuild",
+                    body = "If Browse shows only Config or search feels empty, rebuild the database from the web."
+                )
+                HelpRow(
+                    title = "Local search",
+                    body = "Search and filters run on the local database for speed. Use Rebuild to refresh."
+                )
+                HelpRow(
+                    title = "Playlists backup",
+                    body = "Export keeps playlists, favorites, and recents. Import can merge or replace."
+                )
+            }
+
+            ConfigSectionCard {
+                Text(
+                    text = "Support development",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

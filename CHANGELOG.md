@@ -8,6 +8,7 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 - Updated application package/namespace to `com.tudorc.openair`.
 - Config database rebuild now shows determinate download progress up to 50,000 stations before switching to indeterminate.
 - Added a dismissible playback error banner with clearer network/stream error messages.
+- Split Config into Database/Playlists/Help/Support development sections with Database-only fallback when empty/error.
 
 ## [1.1.2] - 2026-02-02
 ### Added
