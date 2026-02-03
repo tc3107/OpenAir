@@ -119,6 +119,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -3001,6 +3002,26 @@ fun ConfigScreen(
         DatabaseStatus.Error -> MaterialTheme.colorScheme.error
     }
     val showOnlyDatabase = uiState.status == DatabaseStatus.Empty || uiState.status == DatabaseStatus.Error
+    val versionLabel = remember {
+        runCatching {
+            val pm = context.packageManager
+            val pkg = context.packageName
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(pkg, 0)
+            }
+            val name = info.versionName?.takeIf { it.isNotBlank() } ?: "0.0.0"
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode.toLong()
+            }
+            "Version $name ($code)"
+        }.getOrElse { "Version unknown" }
+    }
 
     Column(
         modifier = modifier
@@ -3196,6 +3217,13 @@ fun ConfigScreen(
                     title = "Playlists backup",
                     body = "Export keeps playlists, favorites, and recents. Import can merge or replace."
                 )
+                Text(
+                    text = versionLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             ConfigSectionCard {
@@ -3204,6 +3232,24 @@ fun ConfigScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
+                Text(
+                    text = "OpenAir is free and open source.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "If you find it useful, you can support development via Ko-fi.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilledTonalButton(onClick = { uriHandler.openUri("https://ko-fi.com/tc3107") }) {
+                        Text("Support on Ko-fi")
+                    }
+                }
             }
         }
     }
