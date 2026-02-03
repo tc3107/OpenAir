@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.openair"
+    namespace = "com.tudorc.openair"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.openair"
+        applicationId = "com.tudorc.openair"
         minSdk = 24
         targetSdk = 36
         val versionCodeProp = (project.findProperty("VERSION_CODE") as String?)

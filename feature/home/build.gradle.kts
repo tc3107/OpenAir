@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.openair.feature.home"
+    namespace = "com.tudorc.openair.feature.home"
     compileSdk {
         version = release(36)
     }

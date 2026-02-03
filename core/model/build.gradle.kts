@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.openair.core.model"
+    namespace = "com.tudorc.openair.core.model"
     compileSdk {
         version = release(36)
     }
