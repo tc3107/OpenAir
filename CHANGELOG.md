@@ -6,6 +6,7 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 ## [1.1.3] - 2026-02-03
 ### Changed
 - Updated application package/namespace to `com.tudorc.openair`.
+- Config database rebuild now shows determinate download progress up to 50,000 stations before switching to indeterminate.
 
 ## [1.1.2] - 2026-02-02
 ### Added

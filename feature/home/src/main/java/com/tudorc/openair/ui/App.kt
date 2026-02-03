@@ -160,6 +160,7 @@ import com.tudorc.openair.data.model.SystemPlaylistNames
 import com.tudorc.openair.data.model.Tag
 import com.tudorc.openair.data.model.normalizePlaylistName
 import com.tudorc.openair.data.repo.AppStateRepository
+import com.tudorc.openair.data.repo.DatabaseRebuildPhase
 import com.tudorc.openair.data.repo.DatabaseStatus
 import com.tudorc.openair.data.repo.NavigationState
 import com.tudorc.openair.data.repo.PlaylistImportMode
@@ -3067,16 +3068,33 @@ fun ConfigScreen(
             }
 
             if (uiState.isRebuilding) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                uiState.progress?.let { progress ->
+                val progress = uiState.progress
+                val stationProgressMax = 50_000
+                val stationProgress = if (
+                    progress?.phase == DatabaseRebuildPhase.DownloadingStations &&
+                    progress.stationCount <= stationProgressMax
+                ) {
+                    (progress.stationCount.toFloat() / stationProgressMax).coerceIn(0f, 1f)
+                } else {
+                    null
+                }
+                if (stationProgress != null) {
+                    LinearProgressIndicator(
+                        progress = { stationProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                progress?.let { status ->
                     Text(
-                        text = progress.message,
+                        text = status.message,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (progress.stationCount > 0) {
+                    if (status.stationCount > 0) {
                         Text(
-                            text = "Stations downloaded: ${progress.stationCount}",
+                            text = "Stations downloaded: ${status.stationCount}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
