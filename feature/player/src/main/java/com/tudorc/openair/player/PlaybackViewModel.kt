@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.tudorc.openair.data.model.Station
@@ -19,6 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import java.util.concurrent.Executor
 
 class PlaybackViewModel(
@@ -35,6 +40,7 @@ class PlaybackViewModel(
     private var candidateUrls: List<String> = emptyList()
     private var candidateIndex = 0
     private var pendingPlayStation: Station? = null
+    private var lastAttemptedUrl: String? = null
 
     private val executor = Executor { command -> command.run() }
 
@@ -65,11 +71,23 @@ class PlaybackViewModel(
                 else -> "Idle"
             }
             val buffering = state == Player.STATE_BUFFERING
-            _state.update { it.copy(status = status, isBuffering = buffering) }
+            _state.update {
+                it.copy(
+                    status = status,
+                    isBuffering = buffering,
+                    error = if (state == Player.STATE_READY) null else it.error
+                )
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            _state.update { it.copy(status = "Error: ${error.errorCodeName}", isBuffering = false) }
+            _state.update {
+                it.copy(
+                    status = "Error: ${error.errorCodeName}",
+                    isBuffering = false,
+                    error = buildPlaybackError(error, lastAttemptedUrl)
+                )
+            }
             retryNextUrl()
         }
     }
@@ -78,12 +96,26 @@ class PlaybackViewModel(
         viewModelScope.launch {
             appStateRepository.saveLastStation(station)
             playlistRepository.addToRecents(station)
-            _state.update { it.copy(status = "Resolving stream...", currentStation = station) }
+            _state.update {
+                it.copy(
+                    status = "Resolving stream...",
+                    currentStation = station,
+                    error = null
+                )
+            }
             triedUrls.clear()
             candidateUrls = repository.resolvePlaybackUrls(station.stationuuid)
             candidateIndex = 0
             if (candidateUrls.isEmpty()) {
-                _state.update { it.copy(status = "No playable URL") }
+                _state.update {
+                    it.copy(
+                        status = "No playable URL",
+                        error = PlaybackError(
+                            title = "No playable stream",
+                            message = "This station does not provide a usable stream URL."
+                        )
+                    )
+                }
                 return@launch
             }
             startPlayback(candidateUrls[candidateIndex], station)
@@ -135,8 +167,13 @@ class PlaybackViewModel(
         controller?.stop()
     }
 
+    fun dismissError() {
+        _state.update { it.copy(error = null) }
+    }
+
     private fun startPlayback(url: String, station: Station) {
         triedUrls.add(url)
+        lastAttemptedUrl = url
         ensureServiceStarted()
         val artworkUri = station.favicon?.trim()?.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }
         val item = MediaItem.Builder()
@@ -173,7 +210,15 @@ class PlaybackViewModel(
                 startPlayback(next, station)
                 return@launch
             }
-            _state.update { it.copy(status = "Playback failed") }
+            _state.update {
+                it.copy(
+                    status = "Playback failed",
+                    error = PlaybackError(
+                        title = "Station unavailable",
+                        message = "All available stream URLs failed. The station may be offline or blocked."
+                    )
+                )
+            }
         }
     }
 
@@ -189,9 +234,94 @@ class PlaybackViewModel(
     }
 }
 
+private fun buildPlaybackError(error: PlaybackException, url: String?): PlaybackError {
+    val host = url?.let { runCatching { Uri.parse(it).host }.getOrNull() }?.takeIf { it.isNotBlank() }
+    val hostLabel = host?.let { " ($it)" } ?: ""
+    val cause = error.cause
+    return when (cause) {
+        is UnknownHostException -> PlaybackError(
+            title = "Can't reach station",
+            message = "We couldn't resolve the station host$hostLabel. Check your connection or try again."
+        )
+        is SocketTimeoutException -> PlaybackError(
+            title = "Connection timed out",
+            message = "The station didn't respond in time$hostLabel. Try again later."
+        )
+        is ConnectException -> PlaybackError(
+            title = "Connection failed",
+            message = "We couldn't connect to the station$hostLabel. It may be offline or blocked."
+        )
+        is SSLException -> PlaybackError(
+            title = "Secure connection failed",
+            message = "The station's HTTPS connection couldn't be established$hostLabel."
+        )
+        else -> when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> PlaybackError(
+                title = "No network connection",
+                message = "Check your internet connection and try again."
+            )
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> PlaybackError(
+                title = "Network timeout",
+                message = "The station did not respond in time$hostLabel."
+            )
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> {
+                val status = (cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+                val detail = status?.let { "HTTP $it" } ?: "HTTP error"
+                PlaybackError(
+                    title = "Stream rejected",
+                    message = "The station server returned $detail$hostLabel."
+                )
+            }
+            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> PlaybackError(
+                title = "Stream not found",
+                message = "The station stream URL is no longer available."
+            )
+            PlaybackException.ERROR_CODE_IO_NO_PERMISSION -> PlaybackError(
+                title = "Access denied",
+                message = "The stream couldn't be accessed due to permission or policy restrictions."
+            )
+            PlaybackException.ERROR_CODE_IO_CLEARTEXT_NOT_PERMITTED -> PlaybackError(
+                title = "Cleartext blocked",
+                message = "This station uses HTTP and cleartext traffic isn't permitted on this device."
+            )
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> PlaybackError(
+                title = "Unsupported stream",
+                message = "This station uses a stream format the player can't read."
+            )
+            PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> PlaybackError(
+                title = "Unsupported audio",
+                message = "Your device doesn't support this audio format."
+            )
+            PlaybackException.ERROR_CODE_DECODING_FAILED -> PlaybackError(
+                title = "Audio decode failed",
+                message = "The stream couldn't be decoded. Try another station."
+            )
+            PlaybackException.ERROR_CODE_DRM_CONTENT_ERROR,
+            PlaybackException.ERROR_CODE_DRM_DEVICE_REVOKED,
+            PlaybackException.ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED,
+            PlaybackException.ERROR_CODE_DRM_LICENSE_EXPIRED,
+            PlaybackException.ERROR_CODE_DRM_PROVISIONING_FAILED -> PlaybackError(
+                title = "DRM error",
+                message = "This stream requires DRM that isn't available on this device."
+            )
+            else -> PlaybackError(
+                title = "Playback error",
+                message = "Something went wrong while playing this station."
+            )
+        }
+    }
+}
+
+data class PlaybackError(
+    val title: String,
+    val message: String
+)
+
 data class PlaybackState(
     val isPlaying: Boolean = false,
     val isBuffering: Boolean = false,
     val status: String = "Idle",
-    val currentStation: Station? = null
+    val currentStation: Station? = null,
+    val error: PlaybackError? = null
 )

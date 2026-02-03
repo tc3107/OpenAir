@@ -78,6 +78,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
@@ -87,6 +88,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Radio
@@ -169,6 +171,7 @@ import com.tudorc.openair.data.repo.PlaylistRepository
 import com.tudorc.openair.data.repo.RadioRepository
 import com.tudorc.openair.data.repo.ScreenType
 import com.tudorc.openair.data.repo.SearchFilters
+import com.tudorc.openair.player.PlaybackError
 import com.tudorc.openair.player.PlaybackViewModel
 
 sealed class Screen {
@@ -3394,73 +3397,81 @@ fun PlayerBar(
         }
     }
 
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 1.dp
-    )
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        shape = RoundedCornerShape(0.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StationIcon(
-                url = station?.favicon,
-                stationUuid = station?.stationuuid,
-                size = 44.dp,
-                loadDelayMs = 0L
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant,
+            thickness = 1.dp
+        )
+        state.error?.let { error ->
+            PlaybackErrorBanner(
+                error = error,
+                onDismiss = { playbackViewModel.dismissError() }
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = station?.name ?: "",
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                    modifier = if (state.isPlaying) Modifier.basicMarquee() else Modifier
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            shape = RoundedCornerShape(0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StationIcon(
+                    url = station?.favicon,
+                    stationUuid = station?.stationuuid,
+                    size = 44.dp,
+                    loadDelayMs = 0L
                 )
-                if (infoParts.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = infoParts.joinToString("  •  "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = station?.name ?: "",
+                        style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
                         modifier = if (state.isPlaying) Modifier.basicMarquee() else Modifier
                     )
+                    if (infoParts.isNotEmpty()) {
+                        Text(
+                            text = infoParts.joinToString("  •  "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            modifier = if (state.isPlaying) Modifier.basicMarquee() else Modifier
+                        )
+                    }
                 }
-            }
-            IconButton(onClick = {
-                haptics.soft()
-                showAddDialog = true
-            }) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            FilledTonalButton(
-                onClick = {
-                    haptics.strong()
-                    playbackViewModel.togglePlayback()
-                },
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                val icon = when {
-                    state.isBuffering -> Icons.Outlined.PlayArrow
-                    state.isPlaying -> Icons.Filled.Pause
-                    else -> Icons.Filled.PlayArrow
+                IconButton(onClick = {
+                    haptics.soft()
+                    showAddDialog = true
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Icon(imageVector = icon, contentDescription = null)
+                FilledTonalButton(
+                    onClick = {
+                        haptics.strong()
+                        playbackViewModel.togglePlayback()
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    val icon = when {
+                        state.isBuffering -> Icons.Outlined.PlayArrow
+                        state.isPlaying -> Icons.Filled.Pause
+                        else -> Icons.Filled.PlayArrow
+                    }
+                    Icon(imageVector = icon, contentDescription = null)
+                }
             }
         }
     }
@@ -3478,6 +3489,49 @@ fun PlayerBar(
                 playlistsViewModel.toggleInPlaylist(playlistId, station)
             }
         )
+    }
+}
+
+@Composable
+private fun PlaybackErrorBanner(
+    error: PlaybackError,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = error.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = error.message,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Dismiss error"
+                )
+            }
+        }
     }
 }
 
