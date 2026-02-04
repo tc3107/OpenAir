@@ -1,1 +1,2 @@
 - Browse filter fields now scroll when the keyboard is open, preventing other filters from being squished.
+- Fixed several smaller issues.

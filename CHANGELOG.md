@@ -6,6 +6,7 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 ## [1.2.1] - 2026-02-04
 ### Fixed
 - Browse filter fields now scroll when the keyboard is open, preventing other filters from being squished.
+- Fixed several smaller issues.
 
 ## [1.2.0] - 2026-02-04
 ### Added
