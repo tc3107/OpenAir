@@ -798,7 +798,8 @@ fun BrowseScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(WindowInsets.ime.asPaddingValues()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FilterDropdownField(
