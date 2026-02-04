@@ -1,6 +1,8 @@
 package com.tudorc.openair.player
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -52,9 +54,12 @@ class RadioPlaybackService : MediaSessionService() {
                 return Futures.immediateFuture(empty)
             }
         }
-        mediaSession = MediaSession.Builder(this, sessionPlayer)
+        val mediaSessionBuilder = MediaSession.Builder(this, sessionPlayer)
             .setCallback(callback)
-            .build()
+        createSessionActivity()?.let { sessionActivity ->
+            mediaSessionBuilder.setSessionActivity(sessionActivity)
+        }
+        mediaSession = mediaSessionBuilder.build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider(this))
     }
 
@@ -66,6 +71,17 @@ class RadioPlaybackService : MediaSessionService() {
         mediaSession.release()
         player.release()
         super.onDestroy()
+    }
+
+    private fun createSessionActivity(): PendingIntent? {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return PendingIntent.getActivity(
+            this,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }
 
