@@ -31,7 +31,7 @@ class PlaybackViewModel(
     private val repository: RadioRepository,
     private val playlistRepository: PlaylistRepository,
     private val appStateRepository: AppStateRepository
-) : AndroidViewModel(app) {
+) : AndroidViewModel(app), PlaylistCommandHandler {
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state
 
@@ -41,6 +41,7 @@ class PlaybackViewModel(
     private var candidateIndex = 0
     private var pendingPlayStation: Station? = null
     private var lastAttemptedUrl: String? = null
+    @Volatile private var playlistContext: PlaylistContext? = null
 
     private val executor = Executor { command -> command.run() }
 
@@ -56,6 +57,7 @@ class PlaybackViewModel(
             }
         }, executor)
         restoreLastStation()
+        PlaybackCommandBridge.bind(this)
     }
 
     private val playerListener = object : Player.Listener {
@@ -93,6 +95,43 @@ class PlaybackViewModel(
     }
 
     fun playStation(station: Station) {
+        playlistContext = null
+        playStationInternal(station)
+    }
+
+    fun playStationFromPlaylist(station: Station, playlistStations: List<Station>, index: Int) {
+        val stations = playlistStations.toList()
+        val safeIndex = if (index in stations.indices) {
+            index
+        } else {
+            stations.indexOfFirst { it.stationuuid == station.stationuuid }
+        }
+        if (safeIndex !in stations.indices) {
+            playStation(station)
+            return
+        }
+        playlistContext = PlaylistContext(stations = stations, index = safeIndex)
+        playStationInternal(station)
+    }
+
+    override fun hasPlaylistContext(): Boolean = playlistContext != null
+
+    override fun skipNext(): Boolean = skipWithinPlaylist(1)
+
+    override fun skipPrevious(): Boolean = skipWithinPlaylist(-1)
+
+    private fun skipWithinPlaylist(step: Int): Boolean {
+        val context = playlistContext ?: return false
+        val size = context.stations.size
+        if (size == 0) return false
+        val targetIndex = ((context.index + step) % size + size) % size
+        val station = context.stations[targetIndex]
+        playlistContext = context.copy(index = targetIndex)
+        playStationInternal(station)
+        return true
+    }
+
+    private fun playStationInternal(station: Station) {
         viewModelScope.launch {
             appStateRepository.saveLastStation(station)
             playlistRepository.addToRecents(station)
@@ -228,11 +267,17 @@ class PlaybackViewModel(
     }
 
     override fun onCleared() {
+        PlaybackCommandBridge.bind(null)
         controller?.removeListener(playerListener)
         controller?.release()
         super.onCleared()
     }
 }
+
+private data class PlaylistContext(
+    val stations: List<Station>,
+    val index: Int
+)
 
 private fun buildPlaybackError(error: PlaybackException, url: String?): PlaybackError {
     val host = url?.let { runCatching { Uri.parse(it).host }.getOrNull() }?.takeIf { it.isNotBlank() }

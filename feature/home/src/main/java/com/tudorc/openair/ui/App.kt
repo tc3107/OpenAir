@@ -2069,7 +2069,7 @@ fun PlaylistStationsScreen(
                 itemsIndexed(filtered) { index, station ->
                     StationRow(
                         station = station,
-                        onPlay = { playbackViewModel.playStation(station) },
+                        onPlay = { playbackViewModel.playStationFromPlaylist(station, filtered, index) },
                         iconLoadDelayMs = imageLoadDelayForIndex(index),
                         onAddToPlaylist = { addDialogStation = station },
                         showPlaylistMenu = true,

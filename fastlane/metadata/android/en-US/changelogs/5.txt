@@ -3,3 +3,4 @@
 - Reorganized Config into Database/Playlists/Help/Support with app version info and a support link.
 - Updated the app package/namespace (no action needed).
 - Kept filter inputs visible above the keyboard while typing.
+- Added playlist-aware next/previous controls with wrap-around playback.
