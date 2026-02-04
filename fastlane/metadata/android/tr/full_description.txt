@@ -1,0 +1,45 @@
+<b>OpenAir</b><br>
+<i>Basit, hızlı ve gizliliğe saygılı bir internet radyo oynatıcısı ve tarayıcısı.</i><br>
+<br>
+
+OpenAir, canlı radyo istasyonlarını aramanıza, dinlemenize ve kişisel kütüphanenize kaydetmenize olanak tanır.<br>
+<br>
+
+<b>Hesap yok.</b> <b>Reklam yok.</b> <b>Telemetri yok.</b> Yalnızca yerel kütüphane.<br>
+<br>
+
+<b>Öne çıkan özellikler</b><br>
+<ul>
+  <li>Radyo istasyonlarını <b>ad</b>, <b>ülke</b>, <b>dil</b> ve <b>tür</b>e göre arayın</li>
+  <li>İstasyonları kişisel kütüphanenize kaydedin</li>
+  <li>Yaygın codec desteği</li>
+  <li>İstasyonları size olan uzaklığa göre sıralayın (mümkün olduğunda)</li>
+</ul>
+<br>
+
+<b>İstasyon verileri</b><br>
+İstasyon bilgileri, topluluk tarafından sürdürülen
+<b>Radio Browser</b> veritabanından gelir.<br>
+<br>
+<i>Not:</i> OpenAir, istasyon listeleri için Radio Browser'a bağlanır ve yayınları oynatmak için doğrudan istasyon sunucularına bağlanır.<br>
+<br>
+
+<b>Arama</b><br>
+İstasyonlar şu şekilde aranabilir:<br>
+<ul>
+  <li>Ad</li>
+  <li>Ülke</li>
+  <li>Dil</li>
+  <li>Tür</li>
+</ul>
+<br>
+
+<b>Lisans</b><br>
+OpenAir, <b>MIT Lisansı</b> ile yayınlanan özgür ve açık kaynaklı bir yazılımdır.<br>
+<br>
+
+<b>Destek</b><br>
+Lütfen hataları bildirin ve özellik isteklerini GitHub Issues üzerinden iletin:<br>
+https://github.com/tc3107/OpenAir/issues<br>
+<br>
+<i>Yapay zeka çevirisidir.</i><br>

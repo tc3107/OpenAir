@@ -1,0 +1,45 @@
+<b>OpenAir</b><br>
+<i>Un player și browser de radio pe internet simplu, rapid și care respectă confidențialitatea.</i><br>
+<br>
+
+OpenAir îți permite să cauți și să asculți posturi de radio live și să le salvezi în biblioteca ta personală.<br>
+<br>
+
+<b>Fără conturi.</b> <b>Fără reclame.</b> <b>Fără telemetrie.</b> Doar bibliotecă locală.<br>
+<br>
+
+<b>Funcționalități cheie</b><br>
+<ul>
+  <li>Caută posturi de radio după <b>nume</b>, <b>țară</b>, <b>limbă</b> și <b>gen</b></li>
+  <li>Salvează posturile în biblioteca ta personală</li>
+  <li>Suport larg pentru codecuri uzuale</li>
+  <li>Sortează posturile după distanța față de tine (când este disponibilă)</li>
+</ul>
+<br>
+
+<b>Date despre posturi</b><br>
+Informațiile despre posturi provin din baza de date
+<b>Radio Browser</b> întreținută de comunitate.<br>
+<br>
+<i>Notă:</i> OpenAir se conectează la Radio Browser pentru listele de posturi și se conectează direct la serverele posturilor pentru redarea fluxurilor.<br>
+<br>
+
+<b>Căutare</b><br>
+Posturile pot fi căutate după:<br>
+<ul>
+  <li>Nume</li>
+  <li>Țară</li>
+  <li>Limbă</li>
+  <li>Gen</li>
+</ul>
+<br>
+
+<b>Licență</b><br>
+OpenAir este software liber și open-source, lansat sub <b>Licența MIT</b>.<br>
+<br>
+
+<b>Suport</b><br>
+Te rugăm să raportezi erori și să soliciți funcții prin GitHub Issues:<br>
+https://github.com/tc3107/OpenAir/issues<br>
+<br>
+<i>Traducere realizată de AI.</i><br>

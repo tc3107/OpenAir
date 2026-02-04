@@ -1,0 +1,45 @@
+<b>OpenAir</b><br>
+<i>Un reproductor y buscador de radio por internet simple, rápido y respetuoso con la privacidad.</i><br>
+<br>
+
+OpenAir te permite buscar y escuchar emisoras de radio en directo y guardarlas en tu biblioteca personal.<br>
+<br>
+
+<b>Sin cuentas.</b> <b>Sin anuncios.</b> <b>Sin telemetría.</b> Solo biblioteca local.<br>
+<br>
+
+<b>Funciones clave</b><br>
+<ul>
+  <li>Busca emisoras por <b>nombre</b>, <b>país</b>, <b>idioma</b> y <b>género</b></li>
+  <li>Guarda emisoras en tu biblioteca personal</li>
+  <li>Amplio soporte de códecs comunes</li>
+  <li>Ordena emisoras por distancia a ti (cuando esté disponible)</li>
+</ul>
+<br>
+
+<b>Datos de las emisoras</b><br>
+La información de las emisoras proviene de la base de datos
+<b>Radio Browser</b>, mantenida por la comunidad.<br>
+<br>
+<i>Nota:</i> OpenAir se conecta a Radio Browser para los listados de emisoras y se conecta directamente a los servidores de las emisoras para reproducir los streams.<br>
+<br>
+
+<b>Búsqueda</b><br>
+Las emisoras se pueden buscar por:<br>
+<ul>
+  <li>Nombre</li>
+  <li>País</li>
+  <li>Idioma</li>
+  <li>Género</li>
+</ul>
+<br>
+
+<b>Licencia</b><br>
+OpenAir es software libre y de código abierto, publicado bajo la <b>Licencia MIT</b>.<br>
+<br>
+
+<b>Soporte</b><br>
+Por favor, reporta errores y solicita funciones mediante GitHub Issues:<br>
+https://github.com/tc3107/OpenAir/issues<br>
+<br>
+<i>Traducción realizada por IA.</i><br>

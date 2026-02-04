@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
 ## [1.1.4] - 2026-02-04
+### Added
+- Fastlane metadata translations (short and full descriptions) for ro, es, pt-BR, de, fr, it, tr, pl, uk, and ru.
+
 ### Changed
 - Database summary now counts unique tags and languages based on downloaded stations.
 

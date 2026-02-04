@@ -1,0 +1,43 @@
+<b>OpenAir</b><br>
+<i>A simple, fast, privacy-respecting internet radio player and browser.</i><br>
+<br>
+
+OpenAir lets you search and play live radio stations and save them to your personal library.<br>
+<br>
+
+<b>No accounts.</b> <b>No ads.</b> <b>No telemetry.</b> Local library only.<br>
+<br>
+
+<b>Key features</b><br>
+<ul>
+  <li>Search radio stations by <b>name</b>, <b>country</b>, <b>language</b>, and <b>genre</b></li>
+  <li>Save stations to your personal library</li>
+  <li>Wide common codec support</li>
+  <li>Sort stations by distance to you (when available)</li>
+</ul>
+<br>
+
+<b>Station data</b><br>
+Station information comes from the community-maintained
+<b>Radio Browser</b> database.<br>
+<br>
+<i>Note:</i> OpenAir connects to Radio Browser for station listings and connects directly to station servers to play streams.<br>
+<br>
+
+<b>Search</b><br>
+Stations can be searched by:<br>
+<ul>
+  <li>Name</li>
+  <li>Country</li>
+  <li>Language</li>
+  <li>Genre</li>
+</ul>
+<br>
+
+<b>License</b><br>
+OpenAir is free and open-source software, released under the <b>MIT License</b>.<br>
+<br>
+
+<b>Support</b><br>
+Please report bugs and request features via GitHub Issues:<br>
+https://github.com/tc3107/OpenAir/issues<br>

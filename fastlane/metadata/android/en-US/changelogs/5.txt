@@ -1,0 +1,4 @@
+- Improved database rebuild progress with determinate counts up to 50,000 stations.
+- Added a dismissible playback error banner with clearer stream and network messages.
+- Reorganized Config into Database/Playlists/Help/Support with app version info and a support link.
+- Updated the app package/namespace (no action needed).

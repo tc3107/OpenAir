@@ -1,0 +1,45 @@
+<b>OpenAir</b><br>
+<i>Um player e navegador de rádio pela internet simples, rápido e que respeita a privacidade.</i><br>
+<br>
+
+O OpenAir permite que você pesquise e ouça estações de rádio ao vivo e as salve na sua biblioteca pessoal.<br>
+<br>
+
+<b>Sem contas.</b> <b>Sem anúncios.</b> <b>Sem telemetria.</b> Apenas biblioteca local.<br>
+<br>
+
+<b>Principais recursos</b><br>
+<ul>
+  <li>Pesquise estações de rádio por <b>nome</b>, <b>país</b>, <b>idioma</b> e <b>gênero</b></li>
+  <li>Salve estações na sua biblioteca pessoal</li>
+  <li>Amplo suporte a codecs comuns</li>
+  <li>Ordene estações pela distância até você (quando disponível)</li>
+</ul>
+<br>
+
+<b>Dados das estações</b><br>
+As informações das estações vêm do banco de dados
+<b>Radio Browser</b>, mantido pela comunidade.<br>
+<br>
+<i>Nota:</i> O OpenAir se conecta ao Radio Browser para as listagens e se conecta diretamente aos servidores das estações para reproduzir os streams.<br>
+<br>
+
+<b>Busca</b><br>
+As estações podem ser pesquisadas por:<br>
+<ul>
+  <li>Nome</li>
+  <li>País</li>
+  <li>Idioma</li>
+  <li>Gênero</li>
+</ul>
+<br>
+
+<b>Licença</b><br>
+OpenAir é software livre e de código aberto, lançado sob a <b>Licença MIT</b>.<br>
+<br>
+
+<b>Suporte</b><br>
+Por favor, reporte bugs e solicite recursos via GitHub Issues:<br>
+https://github.com/tc3107/OpenAir/issues<br>
+<br>
+<i>Tradução feita por IA.</i><br>
