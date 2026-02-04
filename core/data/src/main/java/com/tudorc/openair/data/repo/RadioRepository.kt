@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.tudorc.openair.data.db.DatabaseMetaEntity
 import com.tudorc.openair.data.db.OpenAirDatabase
+import com.tudorc.openair.data.db.StationEntity
 import com.tudorc.openair.data.db.toEntity
 import com.tudorc.openair.data.db.toModel
 import com.tudorc.openair.data.model.Country
@@ -341,6 +342,8 @@ class RadioRepository(context: Context) {
             )
 
             stationDao.clearStations()
+            val uniqueTags = HashSet<String>()
+            val uniqueLanguages = HashSet<String>()
             var offset = 0
             var total = 0
             var page = 0
@@ -357,7 +360,12 @@ class RadioRepository(context: Context) {
                     page = page + 1
                 ) { api.searchStations(params) }
                 if (batch.isEmpty()) break
-                val entities = batch.map { it.toEntity() }
+                val entities = ArrayList<StationEntity>(batch.size)
+                for (station in batch) {
+                    addNormalizedCsvValues(station.tags, uniqueTags)
+                    addNormalizedCsvValues(station.language, uniqueLanguages)
+                    entities += station.toEntity()
+                }
                 stationDao.insertStations(entities)
                 total += entities.size
                 offset += entities.size
@@ -378,8 +386,8 @@ class RadioRepository(context: Context) {
                 status = META_STATUS_READY,
                 stationCount = total,
                 countryCount = countries.size,
-                tagCount = tags.size,
-                languageCount = languages.size,
+                tagCount = uniqueTags.size,
+                languageCount = uniqueLanguages.size,
                 lastUpdated = System.currentTimeMillis(),
                 lastDurationMillis = duration,
                 lastError = null
@@ -665,6 +673,16 @@ class RadioRepository(context: Context) {
         }
 
         return SimpleSQLiteQuery(sql.toString(), args.toTypedArray())
+    }
+
+    private fun addNormalizedCsvValues(value: String?, target: MutableSet<String>) {
+        if (value.isNullOrBlank()) return
+        value.split(',').forEach { raw ->
+            val normalized = raw.trim().lowercase()
+            if (normalized.isNotBlank()) {
+                target.add(normalized)
+            }
+        }
     }
 
     private suspend fun cacheLastSearch(stations: List<Station>) {

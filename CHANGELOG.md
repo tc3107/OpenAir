@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.1.4] - 2026-02-04
+### Changed
+- Database summary now counts unique tags and languages based on downloaded stations.
+
 ## [1.1.3] - 2026-02-03
 ### Changed
 - Updated application package/namespace to `com.tudorc.openair`.
