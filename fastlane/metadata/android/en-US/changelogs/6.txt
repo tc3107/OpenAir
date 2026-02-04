@@ -1,0 +1,3 @@
+- Added Fastlane metadata translations (short and full descriptions) for ro, es, pt-BR, de, fr, it, tr, pl, uk, and ru.
+- Database summary now counts unique tags and languages based on downloaded stations.
+- System backups now include only playlist data (including favorites and recents) and exclude cached data and the station database.

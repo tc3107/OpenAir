@@ -1,7 +1,5 @@
-- Improved database rebuild progress with determinate counts up to 50,000 stations.
-- Added a dismissible playback error banner with clearer stream and network messages.
-- Reorganized Config into Database/Playlists/Help/Support with app version info and a support link.
-- Updated the app package/namespace (no action needed).
-- Kept filter inputs visible above the keyboard while typing.
-- Added playlist-aware next/previous controls with wrap-around playback.
-- System backups now include only playlist data (favorites and recents) and exclude cached data and the station database.
+- Updated application package/namespace to `com.tudorc.openair`.
+- Config database rebuild now shows determinate download progress up to 50,000 stations before switching to indeterminate.
+- Added a dismissible playback error banner with clearer network/stream error messages.
+- Split Config into Database/Playlists/Help/Support development sections with Database-only fallback when empty/error.
+- Added app version info to Help and a Ko-fi support button in Support development.
