@@ -4,3 +4,4 @@
 - Updated the app package/namespace (no action needed).
 - Kept filter inputs visible above the keyboard while typing.
 - Added playlist-aware next/previous controls with wrap-around playback.
+- System backups now include only playlist data (favorites and recents) and exclude cached data and the station database.

@@ -6,6 +6,8 @@ The app retrieves public radio station metadata (such as station names and strea
 
 When a user plays a station, the app connects directly to the radio station’s streaming server to play the audio stream.
 
+If system backup is enabled on the device (for example Seedvault), only playlist data (including favorites and recents) is included in backups.
+
 No user identifiers, analytics data, or tracking information are collected or transmitted by the developer.
 
 No advertising or third-party analytics SDKs are used.

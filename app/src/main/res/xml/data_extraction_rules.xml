@@ -5,15 +5,19 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <include domain="file" path="datastore/openair_playlists.preferences_pb" />
+        <exclude domain="file" path="datastore/openair_app_state.preferences_pb" />
+        <exclude domain="file" path="datastore/openair_cache.preferences_pb" />
+        <exclude domain="database" path="openair.db" />
+        <exclude domain="database" path="openair.db-wal" />
+        <exclude domain="database" path="openair.db-shm" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <include domain="file" path="datastore/openair_playlists.preferences_pb" />
+        <exclude domain="file" path="datastore/openair_app_state.preferences_pb" />
+        <exclude domain="file" path="datastore/openair_cache.preferences_pb" />
+        <exclude domain="database" path="openair.db" />
+        <exclude domain="database" path="openair.db-wal" />
+        <exclude domain="database" path="openair.db-shm" />
     </device-transfer>
-    -->
 </data-extraction-rules>
