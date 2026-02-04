@@ -384,69 +384,72 @@ fun OpenAirApp() {
             }
         },
         bottomBar = {
-            Column(modifier = dismissKeyboardOnTap) {
-                PlayerBar(playbackViewModel, playlistsViewModel)
-                NavigationBar {
-                    if (isDatabaseReady) {
-                        NavigationBarItem(
-                            selected = currentTab == Screen.Browse,
-                            onClick = {
-                                haptics.soft()
-                                if (currentTab == Screen.Browse) {
-                                    browseResetNonce += 1
-                                } else {
-                                    browseQuery = ""
-                                    screen = Screen.Browse
-                                }
-                            },
-                            label = { Text("Browse") },
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Explore,
-                                    contentDescription = null
-                                )
-                            }
-                        )
-                        NavigationBarItem(
-                            selected = currentTab == Screen.Playlists,
-                            onClick = {
-                                haptics.soft()
-                                if (currentTab == Screen.Playlists) {
-                                    playlistsQuery = ""
-                                    if (screen is Screen.PlaylistStations) {
-                                        playlistStationsQuery = ""
-                                        screen = Screen.Playlists
+            val isRebuildInProgress = configState.isRebuilding || configState.status == DatabaseStatus.Building
+            if (!isRebuildInProgress) {
+                Column(modifier = dismissKeyboardOnTap) {
+                    PlayerBar(playbackViewModel, playlistsViewModel)
+                    NavigationBar {
+                        if (isDatabaseReady) {
+                            NavigationBarItem(
+                                selected = currentTab == Screen.Browse,
+                                onClick = {
+                                    haptics.soft()
+                                    if (currentTab == Screen.Browse) {
+                                        browseResetNonce += 1
                                     } else {
-                                        playlistsResetNonce += 1
+                                        browseQuery = ""
+                                        screen = Screen.Browse
                                     }
-                                } else {
-                                    playlistsQuery = ""
-                                    screen = Screen.Playlists
+                                },
+                                label = { Text("Browse") },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Explore,
+                                        contentDescription = null
+                                    )
                                 }
+                            )
+                            NavigationBarItem(
+                                selected = currentTab == Screen.Playlists,
+                                onClick = {
+                                    haptics.soft()
+                                    if (currentTab == Screen.Playlists) {
+                                        playlistsQuery = ""
+                                        if (screen is Screen.PlaylistStations) {
+                                            playlistStationsQuery = ""
+                                            screen = Screen.Playlists
+                                        } else {
+                                            playlistsResetNonce += 1
+                                        }
+                                    } else {
+                                        playlistsQuery = ""
+                                        screen = Screen.Playlists
+                                    }
+                                },
+                                label = { Text("Playlists") },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.QueueMusic,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                        }
+                        NavigationBarItem(
+                            selected = currentTab == Screen.Config,
+                            onClick = {
+                                haptics.soft()
+                                screen = Screen.Config
                             },
-                            label = { Text("Playlists") },
+                            label = { Text("Config") },
                             icon = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.QueueMusic,
+                                    imageVector = Icons.Outlined.HelpOutline,
                                     contentDescription = null
                                 )
                             }
                         )
                     }
-                    NavigationBarItem(
-                        selected = currentTab == Screen.Config,
-                        onClick = {
-                            haptics.soft()
-                            screen = Screen.Config
-                        },
-                        label = { Text("Config") },
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Outlined.HelpOutline,
-                                contentDescription = null
-                            )
-                        }
-                    )
                 }
             }
         }
@@ -3002,7 +3005,10 @@ fun ConfigScreen(
         DatabaseStatus.Empty -> MaterialTheme.colorScheme.outline
         DatabaseStatus.Error -> MaterialTheme.colorScheme.error
     }
-    val showOnlyDatabase = uiState.status == DatabaseStatus.Empty || uiState.status == DatabaseStatus.Error
+    val isRebuildInProgress = uiState.isRebuilding || uiState.status == DatabaseStatus.Building
+    val showOnlyDatabase = isRebuildInProgress ||
+        uiState.status == DatabaseStatus.Empty ||
+        uiState.status == DatabaseStatus.Error
     val versionLabel = remember {
         runCatching {
             val pm = context.packageManager
@@ -3118,6 +3124,11 @@ fun ConfigScreen(
             )
             Text(
                 text = "This can take several minutes and use significant data. Recommended on Wi-Fi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "This only has to be done once to get started.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

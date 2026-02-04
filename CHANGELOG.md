@@ -10,6 +10,7 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 ### Changed
 - Database summary now counts unique tags and languages based on downloaded stations.
 - System backups now include only playlist data (including favorites and recents) and exclude cached data and the station database.
+- Config now hides non-database UI (including bottom bar) while a database rebuild is in progress and notes that the rebuild is only required once to get started.
 
 ### Fixed
 - Backup/data extraction rules no longer include invalid exclude entries outside the playlist backup scope.
