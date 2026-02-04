@@ -798,77 +798,91 @@ fun BrowseScreen(
             val countryOptions = remember(countries) { countries.map { it.name }.distinct() }
             val tagOptions = remember(tags) { tags.map { it.name }.distinct() }
             val languageOptions = remember(languages) { languages.map { toTitleCase(it.name) }.distinct() }
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .padding(WindowInsets.ime.asPaddingValues()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                FilterDropdownField(
-                    label = "Country",
-                    value = countryInput,
-                    options = countryOptions,
-                    onValueChange = { countryInput = it },
-                    onOptionSelected = { countryInput = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                FilterDropdownField(
-                    label = "Language",
-                    value = languageInput,
-                    options = languageOptions,
-                    onValueChange = { languageInput = it },
-                    onOptionSelected = { languageInput = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                FilterDropdownField(
-                    label = "Tag",
-                    value = tagInput,
-                    options = tagOptions,
-                    onValueChange = { tagInput = it },
-                    onOptionSelected = { tagInput = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                TextField(
-                    value = minVotesInput,
-                    onValueChange = { input ->
-                        val filtered = input.filter { it.isDigit() }
-                        minVotesInput = filtered
-                    },
-                    label = { Text("Min. Votes") },
-                    singleLine = true,
-                    isError = minVotesError,
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
-                )
-                if (minVotesError) {
-                    Text(
-                        text = "Min. Votes must be a number.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                item {
+                    FilterDropdownField(
+                        label = "Country",
+                        value = countryInput,
+                        options = countryOptions,
+                        onValueChange = { countryInput = it },
+                        onOptionSelected = { countryInput = it },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(
-                    onClick = {
-                        haptics.strong()
-                        appliedFilters = BrowseFilterInputs(
-                            country = countryInput.trim(),
-                            language = languageInput.trim(),
-                            tag = tagInput.trim(),
-                            minVotes = minVotesValue
+                item {
+                    FilterDropdownField(
+                        label = "Language",
+                        value = languageInput,
+                        options = languageOptions,
+                        onValueChange = { languageInput = it },
+                        onOptionSelected = { languageInput = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    FilterDropdownField(
+                        label = "Tag",
+                        value = tagInput,
+                        options = tagOptions,
+                        onValueChange = { tagInput = it },
+                        onOptionSelected = { tagInput = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    TextField(
+                        value = minVotesInput,
+                        onValueChange = { input ->
+                            val filtered = input.filter { it.isDigit() }
+                            minVotesInput = filtered
+                        },
+                        label = { Text("Min. Votes") },
+                        singleLine = true,
+                        isError = minVotesError,
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
                         )
-                    },
-                    enabled = hasFilterInput && !minVotesError,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Filter Stations")
+                    )
+                }
+                if (minVotesError) {
+                    item {
+                        Text(
+                            text = "Min. Votes must be a number.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                item {
+                    Button(
+                        onClick = {
+                            haptics.strong()
+                            appliedFilters = BrowseFilterInputs(
+                                country = countryInput.trim(),
+                                language = languageInput.trim(),
+                                tag = tagInput.trim(),
+                                minVotes = minVotesValue
+                            )
+                        },
+                        enabled = hasFilterInput && !minVotesError,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Filter Stations")
+                    }
                 }
             }
             return@Column

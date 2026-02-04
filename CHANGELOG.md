@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.2.1] - 2026-02-04
+### Fixed
+- Browse filter fields now scroll when the keyboard is open, preventing other filters from being squished.
+
 ## [1.2.0] - 2026-02-04
 ### Added
 - Fastlane metadata translations (short and full descriptions) for ro, es, pt-BR, de, fr, it, tr, pl, uk, and ru.
