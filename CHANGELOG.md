@@ -13,6 +13,8 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 
 ### Fixed
 - Backup/data extraction rules no longer include invalid exclude entries outside the playlist backup scope.
+- Tapping the media playback notification now opens the app.
+- Playback controls now reflect the current playing state after relaunching the app.
 
 ## [1.1.3] - 2026-02-03
 ### Changed

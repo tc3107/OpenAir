@@ -2,3 +2,5 @@
 - Database summary now counts unique tags and languages based on downloaded stations.
 - System backups now include only playlist data (including favorites and recents) and exclude cached data and the station database.
 - Fixed backup/data extraction rules to avoid invalid exclude entries outside the playlist backup scope.
+- Tapping the media playback notification now opens the app.
+- Playback controls now reflect the current playing state after relaunching the app.

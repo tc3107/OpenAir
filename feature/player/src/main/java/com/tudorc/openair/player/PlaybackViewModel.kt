@@ -51,6 +51,7 @@ class PlaybackViewModel(
         future.addListener({
             controller = future.get()
             controller?.addListener(playerListener)
+            controller?.let { updateFromController(it) }
             pendingPlayStation?.let { station ->
                 pendingPlayStation = null
                 playStation(station)
@@ -66,12 +67,7 @@ class PlaybackViewModel(
         }
 
         override fun onPlaybackStateChanged(state: Int) {
-            val status = when (state) {
-                Player.STATE_BUFFERING -> "Buffering"
-                Player.STATE_READY -> if (controller?.isPlaying == true) "Playing" else "Paused"
-                Player.STATE_ENDED -> "Ended"
-                else -> "Idle"
-            }
+            val status = buildStatus(state, controller?.isPlaying == true)
             val buffering = state == Player.STATE_BUFFERING
             _state.update {
                 it.copy(
@@ -91,6 +87,27 @@ class PlaybackViewModel(
                 )
             }
             retryNextUrl()
+        }
+    }
+
+    private fun updateFromController(controller: MediaController) {
+        val status = buildStatus(controller.playbackState, controller.isPlaying)
+        _state.update {
+            it.copy(
+                isPlaying = controller.isPlaying,
+                isBuffering = controller.playbackState == Player.STATE_BUFFERING,
+                status = status,
+                error = if (controller.playbackState == Player.STATE_READY) null else it.error
+            )
+        }
+    }
+
+    private fun buildStatus(state: Int, isPlaying: Boolean): String {
+        return when (state) {
+            Player.STATE_BUFFERING -> "Buffering"
+            Player.STATE_READY -> if (isPlaying) "Playing" else "Paused"
+            Player.STATE_ENDED -> "Ended"
+            else -> "Idle"
         }
     }
 
