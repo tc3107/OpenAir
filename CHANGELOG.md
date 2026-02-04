@@ -11,6 +11,9 @@ The format is based on Keep a Changelog and the project adheres to Semantic Vers
 - Database summary now counts unique tags and languages based on downloaded stations.
 - System backups now include only playlist data (including favorites and recents) and exclude cached data and the station database.
 
+### Fixed
+- Backup/data extraction rules no longer include invalid exclude entries outside the playlist backup scope.
+
 ## [1.1.3] - 2026-02-03
 ### Changed
 - Updated application package/namespace to `com.tudorc.openair`.
