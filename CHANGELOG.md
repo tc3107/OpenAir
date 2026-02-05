@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.2.2] - 2026-02-05
+### Changed
+- Disabled dependency metadata in APKs and app bundles.
+
 ## [1.2.1] - 2026-02-04
 ### Fixed
 - Browse filter fields now scroll when the keyboard is open, preventing other filters from being squished.
