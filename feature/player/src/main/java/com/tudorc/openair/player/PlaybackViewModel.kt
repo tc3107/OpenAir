@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -16,6 +17,9 @@ import com.tudorc.openair.data.model.Station
 import com.tudorc.openair.data.repo.AppStateRepository
 import com.tudorc.openair.data.repo.PlaylistRepository
 import com.tudorc.openair.data.repo.RadioRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
@@ -26,6 +30,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 import java.util.concurrent.Executor
+import kotlin.math.abs
 
 class PlaybackViewModel(
     private val app: Application,
@@ -42,6 +47,10 @@ class PlaybackViewModel(
     private var candidateIndex = 0
     private var pendingPlayStation: Station? = null
     private var lastAttemptedUrl: String? = null
+    private var stationResolveJob: Job? = null
+    private var stationSwitchJob: Job? = null
+    private var fadeOutJob: Job? = null
+    private var playRequestId = 0L
     @Volatile private var playlistContext: PlaylistContext? = null
     @Volatile private var allowBackgroundMediaService = false
 
@@ -152,7 +161,10 @@ class PlaybackViewModel(
     }
 
     private fun playStationInternal(station: Station) {
-        viewModelScope.launch {
+        stationResolveJob?.cancel()
+        val requestId = ++playRequestId
+        val transition = beginImmediateStationSwitch()
+        stationResolveJob = viewModelScope.launch {
             appStateRepository.saveLastStation(station)
             playlistRepository.addToRecents(station)
             _state.update {
@@ -162,8 +174,10 @@ class PlaybackViewModel(
                     error = null
                 )
             }
+            val resolvedUrls = repository.resolvePlaybackUrls(station.stationuuid)
+            if (isStaleRequest(requestId)) return@launch
             triedUrls.clear()
-            candidateUrls = repository.resolvePlaybackUrls(station.stationuuid)
+            candidateUrls = resolvedUrls
             candidateIndex = 0
             if (candidateUrls.isEmpty()) {
                 _state.update {
@@ -177,7 +191,12 @@ class PlaybackViewModel(
                 }
                 return@launch
             }
-            startPlayback(candidateUrls[candidateIndex], station)
+            startPlayback(
+                url = candidateUrls[candidateIndex],
+                station = station,
+                requestId = requestId,
+                transition = transition
+            )
         }
     }
 
@@ -223,8 +242,15 @@ class PlaybackViewModel(
     }
 
     fun stop() {
+        stationResolveJob?.cancel()
+        stationResolveJob = null
+        fadeOutJob?.cancel()
+        fadeOutJob = null
+        stationSwitchJob?.cancel()
+        stationSwitchJob = null
         controller?.stop()
         controller?.clearMediaItems()
+        controller?.volume = MAX_VOLUME
         stopPlaybackService()
     }
 
@@ -232,7 +258,16 @@ class PlaybackViewModel(
         _state.update { it.copy(error = null) }
     }
 
-    private fun startPlayback(url: String, station: Station) {
+    private fun startPlayback(
+        url: String,
+        station: Station,
+        requestId: Long = playRequestId,
+        transition: StationSwitchTransition = StationSwitchTransition(
+            startedAtMs = SystemClock.elapsedRealtime(),
+            hadActiveAudio = false
+        )
+    ) {
+        if (isStaleRequest(requestId)) return
         triedUrls.add(url)
         lastAttemptedUrl = url
         ensureServiceStarted()
@@ -250,25 +285,166 @@ class PlaybackViewModel(
                     .build()
             )
             .build()
-        controller?.setMediaItem(item)
-        controller?.prepare()
-        controller?.play()
+        val mediaController = controller ?: return
+        stationSwitchJob?.cancel()
+        stationSwitchJob = viewModelScope.launch {
+            try {
+                if (transition.hadActiveAudio) {
+                    fadeOutJob?.cancel()
+                    fadeOutJob = null
+                } else {
+                    mediaController.volume = MAX_VOLUME
+                }
+                if (isStaleRequest(requestId)) return@launch
+                transitionToStation(mediaController, item, requestId, transition)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                mediaController.volume = MAX_VOLUME
+            }
+        }
     }
+
+    private suspend fun transitionToStation(
+        controller: MediaController,
+        item: MediaItem,
+        requestId: Long,
+        transition: StationSwitchTransition
+    ) {
+        if (!transition.hadActiveAudio) {
+            controller.volume = MAX_VOLUME
+            controller.setMediaItem(item)
+            controller.prepare()
+            controller.play()
+            return
+        }
+
+        controller.stop()
+        controller.clearMediaItems()
+        controller.volume = MIN_VOLUME
+        controller.setMediaItem(item)
+        controller.prepare()
+        controller.play()
+
+        val elapsed = SystemClock.elapsedRealtime() - transition.startedAtMs
+        val remainingWindow = (TOTAL_TRANSITION_WINDOW_MS - elapsed).coerceAtLeast(0L)
+        val readyWithinWindow = waitUntilReady(controller, remainingWindow, requestId)
+        if (!readyWithinWindow) {
+            waitUntilReady(controller, READY_WAIT_TIMEOUT_MS, requestId)
+        }
+        if (isStaleRequest(requestId)) return
+
+        if (controller.currentMediaItem?.mediaId == item.mediaId &&
+            controller.playbackState == Player.STATE_READY
+        ) {
+            val fadeInDuration = if (readyWithinWindow) {
+                FAST_FADE_IN_DURATION_MS
+            } else {
+                NORMAL_FADE_IN_DURATION_MS
+            }
+            fadeVolume(controller, MAX_VOLUME, fadeInDuration)
+        } else {
+            controller.volume = MAX_VOLUME
+        }
+    }
+
+    private suspend fun waitUntilReady(
+        controller: MediaController,
+        timeoutMs: Long,
+        requestId: Long
+    ): Boolean {
+        if (isStaleRequest(requestId)) return false
+        if (timeoutMs <= 0L) {
+            return controller.playbackState == Player.STATE_READY
+        }
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (isStaleRequest(requestId)) return false
+            if (controller.playbackState == Player.STATE_READY) return true
+            if (controller.playbackState == Player.STATE_IDLE || controller.playbackState == Player.STATE_ENDED) {
+                return false
+            }
+            delay(POLL_INTERVAL_MS)
+        }
+        return controller.playbackState == Player.STATE_READY
+    }
+
+    private suspend fun fadeVolume(controller: MediaController, target: Float, durationMs: Long) {
+        val clampedTarget = target.coerceIn(MIN_VOLUME, MAX_VOLUME)
+        val start = controller.volume.coerceIn(MIN_VOLUME, MAX_VOLUME)
+        if (durationMs <= 0L || abs(start - clampedTarget) < 0.01f) {
+            controller.volume = clampedTarget
+            return
+        }
+        val steps = (durationMs / VOLUME_STEP_MS).toInt().coerceAtLeast(1)
+        val stepDelay = (durationMs / steps).coerceAtLeast(1L)
+        for (step in 1..steps) {
+            val fraction = step.toFloat() / steps
+            controller.volume = start + ((clampedTarget - start) * fraction)
+            delay(stepDelay)
+        }
+        controller.volume = clampedTarget
+    }
+
+    private fun beginImmediateStationSwitch(): StationSwitchTransition {
+        val startedAtMs = SystemClock.elapsedRealtime()
+        val mediaController = controller ?: return StationSwitchTransition(
+            startedAtMs = startedAtMs,
+            hadActiveAudio = false
+        )
+        val hasActiveAudio = mediaController.isPlaying ||
+            (mediaController.playWhenReady && mediaController.playbackState == Player.STATE_BUFFERING)
+
+        fadeOutJob?.cancel()
+        if (!hasActiveAudio) {
+            mediaController.volume = MAX_VOLUME
+            fadeOutJob = null
+            return StationSwitchTransition(
+                startedAtMs = startedAtMs,
+                hadActiveAudio = false
+            )
+        }
+
+        fadeOutJob = viewModelScope.launch {
+            fadeVolume(mediaController, MIN_VOLUME, FADE_OUT_DURATION_MS)
+            mediaController.pause()
+            mediaController.stop()
+            mediaController.clearMediaItems()
+            mediaController.volume = MIN_VOLUME
+        }
+        return StationSwitchTransition(
+            startedAtMs = startedAtMs,
+            hadActiveAudio = true
+        )
+    }
+
+    private fun isStaleRequest(requestId: Long): Boolean = requestId != playRequestId
 
     private fun retryNextUrl() {
         val station = _state.value.currentStation ?: return
+        val requestId = playRequestId
         viewModelScope.launch {
+            if (isStaleRequest(requestId)) return@launch
             if (candidateIndex + 1 < candidateUrls.size) {
                 candidateIndex += 1
-                startPlayback(candidateUrls[candidateIndex], station)
+                startPlayback(
+                    url = candidateUrls[candidateIndex],
+                    station = station,
+                    requestId = requestId
+                )
                 return@launch
             }
             val refreshed = repository.resolvePlaybackUrls(station.stationuuid)
+            if (isStaleRequest(requestId)) return@launch
             val next = refreshed.firstOrNull { it !in triedUrls }
             if (next != null) {
                 candidateUrls = refreshed
                 candidateIndex = refreshed.indexOf(next)
-                startPlayback(next, station)
+                startPlayback(
+                    url = next,
+                    station = station,
+                    requestId = requestId
+                )
                 return@launch
             }
             _state.update {
@@ -309,6 +485,12 @@ class PlaybackViewModel(
 
     override fun onCleared() {
         PlaybackCommandBridge.bind(null)
+        stationResolveJob?.cancel()
+        stationResolveJob = null
+        fadeOutJob?.cancel()
+        fadeOutJob = null
+        stationSwitchJob?.cancel()
+        stationSwitchJob = null
         controller?.removeListener(playerListener)
         controller?.release()
         super.onCleared()
@@ -318,6 +500,11 @@ class PlaybackViewModel(
 private data class PlaylistContext(
     val stations: List<Station>,
     val index: Int
+)
+
+private data class StationSwitchTransition(
+    val startedAtMs: Long,
+    val hadActiveAudio: Boolean
 )
 
 private fun buildPlaybackError(error: PlaybackException, url: String?): PlaybackError {
@@ -411,3 +598,13 @@ data class PlaybackState(
     val currentStation: Station? = null,
     val error: PlaybackError? = null
 )
+
+private const val TOTAL_TRANSITION_WINDOW_MS = 1_000L
+private const val FADE_OUT_DURATION_MS = 700L
+private const val FAST_FADE_IN_DURATION_MS = 170L
+private const val NORMAL_FADE_IN_DURATION_MS = 260L
+private const val READY_WAIT_TIMEOUT_MS = 30_000L
+private const val POLL_INTERVAL_MS = 25L
+private const val VOLUME_STEP_MS = 30L
+private const val MIN_VOLUME = 0f
+private const val MAX_VOLUME = 1f

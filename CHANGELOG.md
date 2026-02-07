@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.2.4] - 2026-02-07
+### Changed
+- Station switching now starts fading out the current stream immediately on tap, even while the next station URL is still resolving.
+- Stream handoff no longer waits for fade completion; fade remains an effect while the new station starts as soon as it is ready.
+
+### Fixed
+- Prevented stale station-switch jobs from applying late and delaying or conflicting with the active station audio transition.
+
 ## [1.2.3] - 2026-02-07
 ### Added
 - Privacy section in Config with expandable details about app data handling.
