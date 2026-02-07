@@ -28,7 +28,7 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(PlaylistsViewModel::class.java) ->
                 PlaylistsViewModel(playlistRepository) as T
             modelClass.isAssignableFrom(ConfigViewModel::class.java) ->
-                ConfigViewModel(repository) as T
+                ConfigViewModel(repository, appStateRepository) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
     }

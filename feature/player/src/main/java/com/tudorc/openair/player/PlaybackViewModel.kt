@@ -18,6 +18,7 @@ import com.tudorc.openair.data.repo.PlaylistRepository
 import com.tudorc.openair.data.repo.RadioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.net.ConnectException
@@ -42,6 +43,7 @@ class PlaybackViewModel(
     private var pendingPlayStation: Station? = null
     private var lastAttemptedUrl: String? = null
     @Volatile private var playlistContext: PlaylistContext? = null
+    @Volatile private var allowBackgroundMediaService = false
 
     private val executor = Executor { command -> command.run() }
 
@@ -58,6 +60,7 @@ class PlaybackViewModel(
             }
         }, executor)
         restoreLastStation()
+        observeBackgroundMediaServiceSetting()
         PlaybackCommandBridge.bind(this)
     }
 
@@ -221,6 +224,8 @@ class PlaybackViewModel(
 
     fun stop() {
         controller?.stop()
+        controller?.clearMediaItems()
+        stopPlaybackService()
     }
 
     fun dismissError() {
@@ -279,8 +284,27 @@ class PlaybackViewModel(
     }
 
     private fun ensureServiceStarted() {
+        if (!allowBackgroundMediaService) return
         val intent = Intent(app, RadioPlaybackService::class.java)
         app.startForegroundService(intent)
+    }
+
+    private fun stopPlaybackService() {
+        val intent = Intent(app, RadioPlaybackService::class.java)
+        app.stopService(intent)
+    }
+
+    private fun observeBackgroundMediaServiceSetting() {
+        viewModelScope.launch {
+            appStateRepository.observeAllowBackgroundMediaService().collect { enabled ->
+                allowBackgroundMediaService = enabled
+                if (enabled) {
+                    if (controller?.currentMediaItem != null) {
+                        ensureServiceStarted()
+                    }
+                }
+            }
+        }
     }
 
     override fun onCleared() {

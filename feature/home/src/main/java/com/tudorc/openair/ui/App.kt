@@ -17,6 +17,11 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,6 +79,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -119,7 +125,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -499,7 +504,10 @@ fun OpenAirApp() {
                 modifier = contentModifier,
                 uiState = configState,
                 playlistsViewModel = playlistsViewModel,
-                onRebuildDatabase = { configViewModel.rebuildDatabase() }
+                onRebuildDatabase = { configViewModel.rebuildDatabase() },
+                onAllowBackgroundMediaServiceChange = { enabled ->
+                    configViewModel.setAllowBackgroundMediaService(enabled)
+                }
             )
 
             is Screen.PlaylistStations -> PlaylistStationsScreen(
@@ -2958,7 +2966,8 @@ fun ConfigScreen(
     modifier: Modifier,
     uiState: DatabaseUiState,
     playlistsViewModel: PlaylistsViewModel,
-    onRebuildDatabase: () -> Unit
+    onRebuildDatabase: () -> Unit,
+    onAllowBackgroundMediaServiceChange: (Boolean) -> Unit
 ) {
     val haptics = rememberHaptics()
     val context = LocalContext.current
@@ -3220,36 +3229,72 @@ fun ConfigScreen(
 
             ConfigSectionCard {
                 Text(
+                    text = "Privacy",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "How OpenAir handles your data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExpandableInfoBox(
+                    title = "Read more",
+                    body = "OpenAir does not collect or transmit telemetry data.\n\n" +
+                        "Location operations are fully local. Distance sorting runs on-device, and your location is not uploaded by OpenAir.\n\n" +
+                        "When you play a station, your device connects directly to that station's stream server.\n\n" +
+                        "If system backup is enabled on your device, playlist data may be included in backups."
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Allow background media service",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Keep playback service alive after the app UI is closed.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = uiState.allowBackgroundMediaService,
+                        onCheckedChange = { enabled ->
+                            haptics.soft()
+                            onAllowBackgroundMediaServiceChange(enabled)
+                        }
+                    )
+                }
+            }
+
+            ConfigSectionCard {
+                Text(
                     text = "Help",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                HelpRow(
-                    title = "OpenAir",
-                    body = "A lightweight radio browser and player built around the Radio Browser catalog."
+                Text(
+                    text = "Quick explanations and troubleshooting tips.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExpandableInfoBox(
+                    title = "Read more",
+                    body = "OpenAir: A lightweight radio browser and player built around the Radio Browser catalog.\n\n" +
+                        "Database rebuild: If Browse shows only Config or search feels empty, rebuild the database from the web.\n\n" +
+                        "Local search: Search and filters run on the local database for speed. Use Rebuild to refresh.\n\n" +
+                        "Playlists backup: Export keeps playlists, favorites, and recents. Import can merge or replace.\n\n" +
+                        versionLabel
                 )
                 TextButton(onClick = { uriHandler.openUri("https://github.com/tc3107/OpenAir") }) {
                     Text("github.com/tc3107/OpenAir")
                 }
-                HelpRow(
-                    title = "Database rebuild",
-                    body = "If Browse shows only Config or search feels empty, rebuild the database from the web."
-                )
-                HelpRow(
-                    title = "Local search",
-                    body = "Search and filters run on the local database for speed. Use Rebuild to refresh."
-                )
-                HelpRow(
-                    title = "Playlists backup",
-                    body = "Export keeps playlists, favorites, and recents. Import can merge or replace."
-                )
-                Text(
-                    text = versionLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
 
             ConfigSectionCard {
@@ -3415,18 +3460,57 @@ private fun SummaryRow(label: String, value: String) {
 }
 
 @Composable
-private fun HelpRow(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold
+private fun ExpandableInfoBox(
+    title: String,
+    body: String
+) {
+    var expanded by rememberSaveable(title, body) { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
         )
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+                )
+            }
+        }
     }
 }
 

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.2.3] - 2026-02-07
+### Added
+- Privacy section in Config with expandable details about app data handling.
+- Config toggle to allow or disallow keeping the playback service active in the background.
+
+### Changed
+- Help content in Config is now presented in an expandable "Read more" panel.
+- Playback service startup and task-removal behavior now follows the background media service setting.
+- Stopping playback now clears queued media items and stops the playback service.
+
 ## [1.2.2] - 2026-02-05
 ### Changed
 - Disabled dependency metadata in APKs and app bundles.

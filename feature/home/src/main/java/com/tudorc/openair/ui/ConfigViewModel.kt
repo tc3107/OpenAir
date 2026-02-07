@@ -2,6 +2,7 @@ package com.tudorc.openair.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tudorc.openair.data.repo.AppStateRepository
 import com.tudorc.openair.data.repo.DatabaseRebuildState
 import com.tudorc.openair.data.repo.DatabaseStatus
 import com.tudorc.openair.data.repo.DatabaseSummary
@@ -21,11 +22,13 @@ data class DatabaseUiState(
     val summary: DatabaseSummary? = null,
     val isRebuilding: Boolean = false,
     val progress: DatabaseRebuildProgress? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val allowBackgroundMediaService: Boolean = false
 )
 
 class ConfigViewModel(
-    private val repository: RadioRepository
+    private val repository: RadioRepository,
+    private val appStateRepository: AppStateRepository
 ) : ViewModel() {
     private val rebuildState = MutableStateFlow<DatabaseRebuildState>(DatabaseRebuildState.Idle)
     private var rebuildJob: Job? = null
@@ -39,8 +42,9 @@ class ConfigViewModel(
     val uiState: StateFlow<DatabaseUiState> = combine(
         statusFlow,
         repository.observeDatabaseSummary(),
-        rebuildState
-    ) { status, summary, rebuild ->
+        rebuildState,
+        appStateRepository.observeAllowBackgroundMediaService()
+    ) { status, summary, rebuild, allowBackgroundMediaService ->
         val isRebuilding = rebuild is DatabaseRebuildState.Running
         val progress = (rebuild as? DatabaseRebuildState.Running)?.progress
         val rebuildError = (rebuild as? DatabaseRebuildState.Error)?.message
@@ -50,7 +54,8 @@ class ConfigViewModel(
             summary = summary,
             isRebuilding = isRebuilding,
             progress = progress,
-            errorMessage = if (status == DatabaseStatus.Error) errorMessage else rebuildError
+            errorMessage = if (status == DatabaseStatus.Error) errorMessage else rebuildError,
+            allowBackgroundMediaService = allowBackgroundMediaService
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, DatabaseUiState())
 
@@ -60,6 +65,12 @@ class ConfigViewModel(
             repository.rebuildDatabase().collect { update ->
                 rebuildState.value = update
             }
+        }
+    }
+
+    fun setAllowBackgroundMediaService(enabled: Boolean) {
+        viewModelScope.launch {
+            appStateRepository.saveAllowBackgroundMediaService(enabled)
         }
     }
 }

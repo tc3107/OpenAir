@@ -15,12 +15,17 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.tudorc.openair.data.repo.AppStateRepository
+import kotlinx.coroutines.runBlocking
 
 @OptIn(UnstableApi::class)
 class RadioPlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private lateinit var sessionPlayer: Player
     private lateinit var mediaSession: MediaSession
+    private val appStateRepository by lazy(LazyThreadSafetyMode.NONE) {
+        AppStateRepository(applicationContext)
+    }
 
     override fun attachBaseContext(newBase: Context) {
         val attributed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -65,6 +70,22 @@ class RadioPlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession {
         return mediaSession
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        val allowBackgroundMediaService = runBlocking {
+            appStateRepository.readAllowBackgroundMediaService()
+        }
+        if (!allowBackgroundMediaService) {
+            if (::sessionPlayer.isInitialized) {
+                sessionPlayer.pause()
+                sessionPlayer.stop()
+            }
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {

@@ -1,0 +1,4 @@
+- Added a new Privacy section in Config with expandable details about app data handling.
+- Added a Config setting to allow or disallow background playback service behavior.
+- Playback service now respects this setting when starting and when the app task is removed.
+- Updated the Help section with expandable guidance and troubleshooting details.
