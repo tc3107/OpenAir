@@ -2,3 +2,6 @@
 - Added a Config setting to allow or disallow background playback service behavior.
 - Playback service now respects this setting when starting and when the app task is removed.
 - Updated the Help section with expandable guidance and troubleshooting details.
+- Station switching now fades out the current stream immediately while the next stream resolves.
+- Stream handoff no longer waits for fade completion; the next station starts as soon as it is ready.
+- Fixed stale station-switch jobs that could conflict with the active audio transition.
