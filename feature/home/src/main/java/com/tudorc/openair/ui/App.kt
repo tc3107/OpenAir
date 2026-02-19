@@ -2881,7 +2881,14 @@ private fun FilterDropdownField(
                         layoutDirection: LayoutDirection,
                         popupContentSize: IntSize
                     ): IntOffset {
-                        return IntOffset(anchorBounds.left, anchorBounds.bottom + dropdownSpacingPx)
+                        val preferredY = anchorBounds.top - popupContentSize.height - dropdownSpacingPx
+                        val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                        val maxY = (windowSize.height - popupContentSize.height).coerceAtLeast(0)
+
+                        return IntOffset(
+                            x = anchorBounds.left.coerceIn(0, maxX),
+                            y = preferredY.coerceIn(0, maxY)
+                        )
                     }
                 }
             }
@@ -2892,8 +2899,13 @@ private fun FilterDropdownField(
                 Surface(
                     modifier = dropdownWidthModifier,
                     shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 4.dp,
-                    shadowElevation = 6.dp
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 14.dp,
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                    )
                 ) {
                     if (filtered.isEmpty()) {
                         DropdownMenuItem(
