@@ -390,7 +390,7 @@ fun OpenAirApp() {
         },
         bottomBar = {
             val isRebuildInProgress = configState.isRebuilding || configState.status == DatabaseStatus.Building
-            if (!isRebuildInProgress) {
+            if (!isRebuildInProgress && !imeVisible) {
                 Column(modifier = dismissKeyboardOnTap) {
                     PlayerBar(playbackViewModel, playlistsViewModel)
                     NavigationBar {
@@ -809,8 +809,7 @@ fun BrowseScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .padding(WindowInsets.ime.asPaddingValues()),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
