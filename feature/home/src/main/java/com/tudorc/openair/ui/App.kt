@@ -849,7 +849,7 @@ fun BrowseScreen(
                             val filtered = input.filter { it.isDigit() }
                             minVotesInput = filtered
                         },
-                        label = { Text("Min. Votes") },
+                        placeholder = { Text("Min. Votes") },
                         singleLine = true,
                         isError = minVotesError,
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -2831,7 +2831,7 @@ private fun FilterDropdownField(
                 onValueChange(it)
                 expanded = it.isNotBlank()
             },
-            label = { Text(label) },
+            placeholder = { Text(label) },
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
