@@ -2054,27 +2054,6 @@ fun PlaylistStationsScreen(
     }
 
     val listState = rememberLazyListState()
-    var reachedStart by remember(filtered) { mutableStateOf(false) }
-    var reachedEnd by remember(filtered) { mutableStateOf(false) }
-
-    LaunchedEffect(filtered, listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
-            .collect { visibleItems ->
-                val firstIndex = visibleItems.firstOrNull()?.index ?: 0
-                val lastIndex = visibleItems.lastOrNull()?.index ?: -1
-                val startNow = firstIndex == 0 && visibleItems.isNotEmpty()
-                val endNow = lastIndex >= filtered.lastIndex && visibleItems.isNotEmpty()
-
-                if (startNow && !reachedStart) {
-                    haptics.strong()
-                }
-                if (endNow && !reachedEnd) {
-                    haptics.strong()
-                }
-                reachedStart = startNow
-                reachedEnd = endNow
-            }
-    }
 
     Column(modifier = modifier) {
         Row(
