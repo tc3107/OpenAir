@@ -1854,19 +1854,19 @@ fun PlaylistsScreen(
 
     LazyColumn(modifier = modifier) {
         if (query.isBlank()) {
-            items(systemPlaylists) { item ->
+            itemsIndexed(systemPlaylists) { index, item ->
                 SystemPlaylistRow(
                     name = item.ref.label,
                     stations = item.stations,
                     icon = item.icon,
+                    topPadding = if (index == 0) 0.dp else 6.dp,
                     onClick = {
                         haptics.soft()
                         onPlaylistSelected(item.ref, item.ref.label)
                     }
                 )
             }
-
-            if (systemPlaylists.isNotEmpty()) {
+            if (systemPlaylists.isNotEmpty() && userPlaylists.isNotEmpty()) {
                 item {
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                 }
@@ -2198,7 +2198,7 @@ private fun PlaylistRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -2283,12 +2283,13 @@ private fun SystemPlaylistRow(
     name: String,
     stations: List<Station>,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    topPadding: Dp = 6.dp,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -2336,7 +2337,7 @@ private fun NewPlaylistRow(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 12.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp)
     ) {
