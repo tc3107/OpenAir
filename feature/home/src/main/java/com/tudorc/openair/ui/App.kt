@@ -557,6 +557,7 @@ fun BrowseScreen(
     var languageInput by rememberSaveable { mutableStateOf("") }
     var tagInput by rememberSaveable { mutableStateOf("") }
     var minVotesInput by rememberSaveable { mutableStateOf("") }
+    var minVotesFocused by remember { mutableStateOf(false) }
     var appliedFilters by rememberSaveable(saver = browseFilterInputsStateSaver) {
         mutableStateOf<BrowseFilterInputs?>(null)
     }
@@ -698,6 +699,7 @@ fun BrowseScreen(
         showResults -> filteredStations.size
         else -> 0
     }
+    val sortClickInteraction = remember { MutableInteractionSource() }
 
     Column(modifier = modifier) {
         Box(
@@ -732,7 +734,13 @@ fun BrowseScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = sortFieldMinHeight)
-                    .clickable { sortExpanded = true }
+                    .clickable(
+                        interactionSource = sortClickInteraction,
+                        indication = null
+                    ) {
+                        haptics.soft()
+                        sortExpanded = true
+                    }
             )
             DropdownMenu(
                 expanded = sortExpanded,
@@ -809,7 +817,7 @@ fun BrowseScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
@@ -853,7 +861,14 @@ fun BrowseScreen(
                         singleLine = true,
                         isError = minVotesError,
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focus ->
+                                if (focus.isFocused && !minVotesFocused) {
+                                    haptics.soft()
+                                }
+                                minVotesFocused = focus.isFocused
+                            },
                         shape = RoundedCornerShape(16.dp),
                         colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
@@ -877,7 +892,7 @@ fun BrowseScreen(
                 item {
                     Button(
                         onClick = {
-                            haptics.strong()
+                            haptics.soft()
                             appliedFilters = BrowseFilterInputs(
                                 country = countryInput.trim(),
                                 language = languageInput.trim(),
@@ -2714,6 +2729,7 @@ fun SearchTopBar(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptics = rememberHaptics()
     var searchFocused by remember { mutableStateOf(false) }
 
     BackHandler(enabled = searchFocused) {
@@ -2763,8 +2779,13 @@ fun SearchTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
-                .onFocusChanged { focus -> searchFocused = focus.isFocused },
-            shape = RoundedCornerShape(24.dp),
+                .onFocusChanged { focus ->
+                    if (focus.isFocused && !searchFocused) {
+                        haptics.soft()
+                    }
+                    searchFocused = focus.isFocused
+                },
+            shape = RoundedCornerShape(30.dp),
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -2784,6 +2805,7 @@ private fun FilterDropdownField(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    val haptics = rememberHaptics()
     val density = LocalDensity.current
     var expanded by remember { mutableStateOf(false) }
     var textFieldHeightPx by remember { mutableStateOf(0) }
@@ -2841,6 +2863,9 @@ private fun FilterDropdownField(
                     textFieldWidthPx = coordinates.size.width
                 }
                 .onFocusChanged { focus ->
+                    if (focus.isFocused && !isFocused) {
+                        haptics.soft()
+                    }
                     isFocused = focus.isFocused
                     if (!focus.isFocused) {
                         expanded = false
@@ -2863,6 +2888,7 @@ private fun FilterDropdownField(
                     .pointerInput(value) {
                         detectTapGestures(
                             onTap = {
+                                haptics.soft()
                                 onValueChange("")
                                 expanded = false
                                 focusManager.clearFocus()
@@ -2923,6 +2949,7 @@ private fun FilterDropdownField(
                                 DropdownMenuItem(
                                     text = { Text(option) },
                                     onClick = {
+                                        haptics.soft()
                                         onOptionSelected(option)
                                         expanded = false
                                         focusManager.clearFocus()
