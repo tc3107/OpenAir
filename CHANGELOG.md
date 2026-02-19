@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project adheres to Semantic Versioning.
 
+## [1.3.0] - 2026-02-19
+### Changed
+- Enforced a dark app theme regardless of system theme settings.
+- Updated launcher icon assets and moved previous logo files into deprecated icon assets.
+- Unified Browse and Config headers to a centered "OpenAir" title style.
+- Browse search now clarifies scope with "Search station names".
+- Browse filter fields now use placeholders and gentler haptic feedback.
+- Filter dropdown menus now open upward with improved on-screen positioning and visibility.
+- Refined playlist list spacing and section divider behavior.
+
+### Fixed
+- Removed the remaining keyboard inset bar issue on Browse filters.
+- Config now hides bottom navigation while the keyboard is open.
+- Removed scroll-edge haptics in playlist station lists to avoid unintended vibration.
+
 ## [1.2.3] - 2026-02-07
 ### Added
 - Privacy section in Config with expandable details about app data handling.

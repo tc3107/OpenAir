@@ -1,0 +1,7 @@
+- Enforced dark mode across the app.
+- Updated app launcher icon assets.
+- Unified Browse/Config header styling with a centered OpenAir title.
+- Improved Browse filters with clearer placeholders and better dropdown visibility/positioning.
+- Refined playlist spacing and section separators.
+- Fixed remaining Browse keyboard inset bar behavior.
+- Removed playlist scroll-edge haptics to reduce unintended vibration.
