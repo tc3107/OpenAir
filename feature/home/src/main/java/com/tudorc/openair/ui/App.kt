@@ -2759,7 +2759,7 @@ fun SearchTopBar(
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            placeholder = { Text("Search") },
+            placeholder = { Text("Search station names") },
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
